@@ -1,0 +1,7 @@
+"file" "checksum" "filesize" "algorithm"
+"anthropoDistLayers.grd" "37409b684ce13227" "522" "xxhash64"
+"anthropoDistLayers.gri" "6fe14e77494adb09" "249256800" "xxhash64"
+"anthropoDistLayers.zip" "32065f1e62d0bd9b" "7950193" "xxhash64"
+"caribouRSF_NT_Table.csv" "9903ac7b935536a0" "1151" "xxhash64"
+"EOSD_LCC05_ConversionTable.csv" "3b2a461a29331350" "798" "xxhash64"
+"fixedLayersClass.csv" "de2d08e1edce28e4" "203" "xxhash64"
