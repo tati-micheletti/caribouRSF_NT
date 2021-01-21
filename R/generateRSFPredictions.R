@@ -18,11 +18,19 @@ generateRSFPredictions <- function(covTable,
   for (j in seq_len(ncol(covTableRed))){
     set(covTableRed, which(is.na(covTableRed[[j]])), j, 0)
   }
+  # make sure the columns are correctly aligned
+  testthat::expect_true(all(colnames(coeffTable) == names(coeffValues)))
+   # Needs to match the other two
+  setcolorder(covTableRed, names(coeffValues)[-which(colnames(coeffTable) %in% c("Intercept",
+                                                                                "intercept"))])
+  testthat::expect_true(all(colnames(coeffTable)[-which(colnames(coeffTable) %in% c("Intercept",
+                                                                                    "intercept"))] == names(covTableRed)))
   # The matrix multiple -- will result in 100 columns
   # Coefficients (coeffTable); Covariates (covTableRed)
-  # This results in a pixel * bootstrap replicate (rows x columns) 
-  predictedTableSD <- exp(as.matrix(covTableRed) %*% 
-                                   t(coeffTable[,-which(colnames(coeffTable) %in% c("Intercept", 
+  # This results in a pixel * bootstrap replicate (rows x columns)
+  # Original Equation:
+  predictedTableSD <- exp(as.matrix(covTableRed) %*%
+                                   t(coeffTable[,-which(colnames(coeffTable) %in% c("Intercept",
                                                                                 "intercept"))]))
   # My matrix has 7910521 rows (pixels) and 100 columns (replicates)
 
