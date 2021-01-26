@@ -4,7 +4,7 @@ defineModule(sim, list(
                        " Resource Selection Function model developed by ",
                        "DeMars et al., 2019 for the ",
                        "Northwest Territories in Canada"),
-  keywords = c("Caribou", "RSF", "RSF"),
+  keywords = c("Caribou", "RSF"),
   authors = structure(list(list(given = "Tati", 
                                 family = "Micheletti", role = c("aut", "cre"), 
                                 email = "tati.micheletti@gmail.com", comment = NULL)), 
@@ -48,9 +48,9 @@ defineModule(sim, list(
                     desc = paste0("In which years should the simulation save the layers used ",
                                   " to generate the caribou RSF predictions? Defaults to NA, no saving"))
   ),
-  inputObjects = bind_rows(
-    expectsInput(objectName = "NT1shapefile", objectClass = "SpatialPolygonsDataFrame",
-                 desc = "Shapefile showing NT1 caribou herds",
+  inputObjects = bindrows(
+    expectsInput(objectName = "waterRaster", objectClass = "RasterLayer",
+                 desc = "Wetland raster for excluding water from anthropogenic layer",
                  sourceURL = NA),
     expectsInput(objectName = "classTable", objectClass = "data.table",
                  desc = "Classification table for covariate/class",
@@ -128,7 +128,7 @@ defineModule(sim, list(
                  desc = "Original binning table from DeMars et al., 2019",
                  sourceURL = "https://drive.google.com/file/d/1mOoDzLh-pLYn_y2IShl9WntyeJfuxh4t")
   ),
-  outputObjects = bind_rows(
+  outputObjects = bindrows(
     createsOutput(objectName = "coeffTablAndValues", objectClass = "list", 
                   desc = "List with model equation. Default is DeMars et al., 2019."),
     createsOutput(objectName = "predictedPresenceProbability", objectClass = "list", 
@@ -266,15 +266,14 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
       }
     },
     calculatingRSF = {
+
         sim$predictedPresenceProbability[[paste0("Year", time(sim))]] <- RSFModel(coeffTablAndValues = sim$coeffTablAndValues,
                                                                                   modLayers = sim$caribouLayers[[paste0("Year", time(sim))]],
                                                                                   currentTime = time(sim),
                                                                                   pathData = dataPath(sim),
                                                                                   binningTable = sim$binningTable,
                                                                                   pathOut = outputPath(sim),
-                                                                                  cropRSFToShp = P(sim)$cropRSFToShp,
-                                                                                  shp = sim$NT1shapefile)
-      
+                                                                                  shp = caribouArea2)
       # schedule future event(s)
       sim <- scheduleEvent(sim, time(sim) + P(sim)$predictionInterval, "caribouRSF_NT", "calculatingRSF")
       if (P(sim)$predictLastYear){
@@ -307,8 +306,8 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
   cloudFolderID <- "https://drive.google.com/open?id=1PoEkOkg_ixnAdDqqTQcun77nUvkEHDc0"
   
   if (!suppliedElsewhere("rstCurrentBurnList", sim)){
-    warning("Currently, rstCurrentBurnList needs to be provided. 
-It still does not take from the simulations", immediate. = TRUE)
+    warning("rstCurrentBurnList needs to be provided and was not found in the simList. 
+Trying to find it in inputPath", immediate. = TRUE)
     sim$rstCurrentBurnList <- readRDS(file.path(Paths$inputPath, 
                                                 "rstCurrentBurnList_year2100.rds"))
   }

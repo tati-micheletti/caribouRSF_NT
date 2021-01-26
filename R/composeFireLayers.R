@@ -1,5 +1,6 @@
 composeFireLayers <- function(currentTime,
-                              pathData, # To compare to current time. First time needs to be different as we are creating layers, not updating them??
+                              pathData, # To compare to current time. First time needs 
+                              # to be different as we are creating layers, not updating them
                               historicalFires,
                               species,
                               fireLayers,
