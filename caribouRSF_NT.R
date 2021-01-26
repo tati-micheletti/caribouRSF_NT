@@ -43,7 +43,7 @@ defineModule(sim, list(
                     desc = "Internal. Can be names of events or the whole module name; these will be cached by SpaDES")
     
   ),
-  inputObjects = bind_rows(
+  inputObjects = bindrows(
     expectsInput(objectName = "waterRaster", objectClass = "RasterLayer",
                  desc = "Wetland raster for excluding water from anthropogenic layer",
                  sourceURL = NA),
@@ -117,7 +117,7 @@ defineModule(sim, list(
                  desc = "List of fires by year (raster format). These layers are produced by simulation",
                  sourceURL = "")
   ),
-  outputObjects = bind_rows(
+  outputObjects = bindrows(
     createsOutput(objectName = "coeffTablAndValues", objectClass = "list", 
                   desc = "List with model equation. Default is DeMars et al., 2019."),
     createsOutput(objectName = "predictedPresenceProbability", objectClass = "list", 
