@@ -4,7 +4,7 @@ defineModule(sim, list(
                        " Resource Selection Function model developed by ",
                        "DeMars et al., 2019 for the ",
                        "Northwest Territories in Canada"),
-  keywords = c("Caribou", "RSF", "RSF"),
+  keywords = c("Caribou", "RSF"),
   authors = structure(list(list(given = "Tati", 
                                 family = "Micheletti", role = c("aut", "cre"), 
                                 email = "tati.micheletti@gmail.com", comment = NULL)), 
@@ -229,28 +229,13 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
       }
     },
     calculatingRSF = {
-      # fls <- tryCatch({usefulFuns::grepMulti(x = list.files(outputPath(sim)), 
-      #                                        patterns = c("relativeSelection",
-      #                                                     time(sim)))}, 
-      #                 error = function(e){
-      #                   return(NULL)
-      #                 })
-      # if (length(fls) > 0) {
-      #   # THIS SOLUTION PROBABLY DOESN'T WORK FOR WHEN WE ADD ANOTHER MODEL! WILL HAVE TO BE FIXED BY THEN!!!
-      #   sim$predictedPresenceProbability[[paste0("Year", time(sim))]] <- list(lapply(file.path(outputPath(sim), fls), 
-      #                                                                                FUN = raster))
-      #   names(sim$predictedPresenceProbability[[paste0("Year", time(sim))]]) <- sim$modelsToUse
-      #   names(sim$predictedPresenceProbability[[paste0("Year", time(sim))]][[sim$modelsToUse]]) <- c("relativeSelection", "relativeSelectionUncertain")
-      #   
-      # } else {
+
         sim$predictedPresenceProbability[[paste0("Year", time(sim))]] <- RSFModel(coeffTablAndValues = sim$coeffTablAndValues,
                                                                                   modLayers = sim$modLayers[[paste0("Year", time(sim))]],
                                                                                   currentTime = time(sim),
                                                                                   pathData = dataPath(sim),
                                                                                   pathOut = outputPath(sim),
                                                                                   shp = caribouArea2)
-      # }
-      
       # schedule future event(s)
       sim <- scheduleEvent(sim, time(sim) + P(sim)$predictionInterval, "caribouRSF_NT", "calculatingRSF")
       if (P(sim)$predictLastYear){
@@ -283,8 +268,8 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
   cloudFolderID <- "https://drive.google.com/open?id=1PoEkOkg_ixnAdDqqTQcun77nUvkEHDc0"
   
   if (!suppliedElsewhere("rstCurrentBurnList", sim)){
-    warning("Currently, rstCurrentBurnList needs to be provided. 
-It still does not take from the simulations", immediate. = TRUE)
+    warning("rstCurrentBurnList needs to be provided and was not found in the simList. 
+Trying to find it in inputPath", immediate. = TRUE)
     sim$rstCurrentBurnList <- readRDS(file.path(Paths$inputPath, 
                                                 "rstCurrentBurnList_year2100.rds"))
   }
