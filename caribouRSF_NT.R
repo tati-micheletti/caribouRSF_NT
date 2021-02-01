@@ -125,8 +125,8 @@ defineModule(sim, list(
                  desc = "List of fires by year (raster format). These layers are produced by simulation",
                  sourceURL = ""),
     expectsInput(objectName = "binningTable", objectClass = "data.table", 
-                 desc = "Original binning table from DeMars et al., 2019",
-                 sourceURL = "https://drive.google.com/file/d/1mOoDzLh-pLYn_y2IShl9WntyeJfuxh4t")
+                 desc = "Original binning table from DeMars et al., 2019 (Updated in JAN2021 after bugfix)",
+                 sourceURL = "https://drive.google.com/file/d/1KXNlCN9iBLcPBcEge469fU9Kvws2trAc")
   ),
   outputObjects = bindrows(
     createsOutput(objectName = "coeffTablAndValues", objectClass = "list", 
@@ -406,7 +406,7 @@ Trying to find it in inputPath", immediate. = TRUE)
   
   if (!suppliedElsewhere("binningTable", sim)){
     sim$binningTable <- Cache(prepInputs, 
-                              targetFile = "AllYear_noMac_SelectionRatios_20200527.csv",
+                              targetFile = "AllYear_noMac_SelectionRatios_20210120.csv",
                               url = extractURL("binningTable"),
                               destinationPath = dataPath(sim), 
                               fun = "data.table::fread",
