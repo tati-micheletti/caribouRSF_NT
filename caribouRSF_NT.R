@@ -46,7 +46,14 @@ defineModule(sim, list(
                                   "If TRUE, shp in RSFmModel HAS to be provided")),
     defineParameter("yearsToSaveCaribouLayers", "numeric", NA, NA, NA,
                     desc = paste0("In which years should the simulation save the layers used ",
-                                  " to generate the caribou RSF predictions? Defaults to NA, no saving"))
+                                  " to generate the caribou RSF predictions? Defaults to NA, no saving")),
+    defineParameter("leadingSpThreshold", "numeric", 0.75, NA, NA,
+                    desc = paste0("This is the threshold to define if a stand (pixel) is pure or ",
+                                  "mixedwood. If either conifer or broadleaf if above this value ",
+                                  "it is considered a pure stand")),
+    defineParameter("deciduousCoverDiscount", "numeric", 0.8418911, NA, NA,
+                    paste0("This was estimated with data from NWT on March ",
+                           "18, 2020 and may or may not be universal."))
   ),
   inputObjects = bindrows(
     expectsInput(objectName = "waterRaster", objectClass = "RasterLayer",
@@ -126,7 +133,10 @@ defineModule(sim, list(
                  sourceURL = ""),
     expectsInput(objectName = "binningTable", objectClass = "data.table", 
                  desc = "Original binning table from DeMars et al., 2019 (Updated in JAN2021 after bugfix)",
-                 sourceURL = "https://drive.google.com/file/d/1KXNlCN9iBLcPBcEge469fU9Kvws2trAc")
+                 sourceURL = "https://drive.google.com/file/d/1KXNlCN9iBLcPBcEge469fU9Kvws2trAc"),
+    expectsInput(objectName = "runName", objectClass = "character",
+                 desc = "runName relates to the area ran for the simulation. Defaults is to stop without it",
+                 sourceURL = NA)
   ),
   outputObjects = bindrows(
     createsOutput(objectName = "coeffTablAndValues", objectClass = "list", 
@@ -167,6 +177,12 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
         warning(paste0("Vegetation layers not found for year ", time(sim),
                        ". Simulations will NOT use simulated vegetation"))
       }
+      if (P(sim)$simulationProcess == "dynamic"){
+        # Prepare the Forest Class ~ Age + Biomass model
+        sim$forestClassModel <- makeForestClassModel(pixelGroupMap = mod$pixelGroupMap,
+                                                     cohortData = mod$cohortData,
+                                                     rstLCC = sim$rstLCC)
+      }
       # schedule future event(s)
       sim <- scheduleEvent(sim, time(sim) + P(sim)$predictionInterval, "caribouRSF_NT", "gettingData")
       if (P(sim)$predictLastYear){
@@ -176,14 +192,16 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
     },
     preparingLayers = {
       if (P(sim)$simulationProcess == "dynamic"){
-        currRstLCC <- sim$rstLCC        
+        
+        currRstLCC <- makeLCCfromCohortData() # This raster needs to be already the land cover raster
+                                 # after landscape changes (i.e. burns and coming from cohort data)
       } else {
         currRstLCC <- sim$caribouLCC
       }
         sim$fireLayers <- composeFireLayers(currentTime = time(sim),
                                             historicalFires = sim$historicalFires,
                                             pathData = dataPath(sim),
-                                            species = sim$sppEquiv$NWT_BCR6, #TODO remove "hardcoded"
+                                            species = sim[["sppEquiv"]][[sim[["runName"]]]], #TODO remove "hardcoded"
                                             fireLayers = sim$fireLayers,
                                             cohortData = mod$cohortData,
                                             pixelGroupMap = mod$pixelGroupMap,
@@ -230,6 +248,11 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                                                     sim$fixedLayers, 
                                                                     sim$simulLayers,
                                                                     sim$anthropogenicLayers)
+        
+        # Check all layers have the corresponding names in the model
+        testthat::expect_true(all(names(sim$caribouLayers[[paste0("Year", time(sim))]]) %in%
+              colnames(sim$coeffTablAndValues$caribouRSF_NT$coeffTable)))
+        
         if (time(sim) %in% P(sim)$yearsToSaveCaribouLayers) {
           # Assert all rasters are in memory before saving the stack!
           allInMemory <- checkRasterStackIsInMemory(rasStack = sim$caribouLayers[[paste0("Year", 
@@ -392,6 +415,11 @@ Trying to find it in inputPath", immediate. = TRUE)
                                          userTags = c("FUN:.inputObjs", 
                                                       "object:anthropogenicLayers"))
     names(sim$anthropogenicLayers)[names(sim$anthropogenicLayers) == "lineDen1000"] <- "lden1000_2015"
+    names(sim$anthropogenicLayers)[names(sim$anthropogenicLayers) == "exp_sett"] <- "exp_settle"
+  }
+  
+  if (!suppliedElsewhere("runName", sim)){
+    stop("Please provide a runName to your simulation (i.e. 'NWT_NT1_BCR6')")
   }
   
   if (!suppliedElsewhere("historicalFires", sim)){
