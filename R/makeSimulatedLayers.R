@@ -8,6 +8,7 @@ makeSimulatedLayers <- function(fixedLayers,
                                 pixelGroupMap,
                                 decidousSp,
                                 rstLCC,
+                                rasterToMatch,
                                 simulationProcess,
                                 pathData,
                                 makeAssertions = TRUE){
@@ -79,72 +80,38 @@ makeSimulatedLayers <- function(fixedLayers,
                           Sum of layers == 1 ")
     message("Verification complete! Layers were correctly built.")
   }
+  focalMatrix <- circularWindow(ras = rstLCC, 
+                                focalDistance = 1000)
+  # I need to calculate the denominator matrix to avoid study area border effects
+  # This will return a raster with the number of pixels available in the neighborhood
+  # of each pixel
+  denominatorRaster <- raster::focal(x = rasterToMatch, w = focalMatrix, 
+                                     fun = sum, na.rm = TRUE)
+  # Broadleaf 1km proportion
+  # ‘broadleaf dense’, ‘broadleaf open’, ‘mixedwood open’, and ‘mixedwood dense’ 
   
   # Proportions: Prepare the biomass maps
-  if (simulationProcess == "dynamic"){
     # Classes we don't have in the models (for simulationProcess == "dynamic"):
-    # *Conifer dense = 1 --> Conifer open and sparse have the same coefficient. 
-    #                       I will assume caribou selects for conifer dense the same way
-    # **Mixedwood Sparse = 15 --> I will assume caribou selects for mixedwood sparse
-    # the same way as open # As of Jan 11th Shouldn't Exist
-    # # Conifer open = 6, 1*
+    # *Conifer dense = 1 --> Conifer dense was ommited from the model to serve as
+    #                         reference category. According to DeMars, 2019:
+    #                         "For local land-cover type, we created a binary variable 
+    #                         for each type and set ‘conifer dense’ as the reference category by
+    #                         omitting it from the models."
+    # **Mixedwood Sparse = 15 --> As of Jan 11th this class doesn't exist
+    # # Conifer open = 6
     # # Conifer sparse = 8 
     # # Broadleaf dense = 2,
     # # Broadleaf open = 11,
-    # # Mixedwood open = 13, 15
+    # # Mixedwood open = 13,
     # # Mixedwood dense = 3
-    treeSpecies <- data.table(speciesCode = c(decidousSp,
-                                              species[!species %in% decidousSp]),
-                              treeRSF = c(rep("broadleaf",
-                                              times = length(decidousSp)),
-                                          rep("conifer",
-                                              times = length(species[!species %in% decidousSp]))))
-    cohortData <- merge(cohortData, treeSpecies)
-    # Pixel Group to Track: "248852"
-    cohortData[, treeB := sum(B), by = c("pixelGroup", "treeRSF")]
-    
-    browser() # Make back the landcover based on biomass conifer and broadleaf, check
-    # all the categories.
-    
-    # 1. Create the broadleaf table and map
-    cohortDataBroad <- unique(cohortData[treeRSF == "broadleaf", c("pixelGroup", "treeB")])
-    broadleafMap <- SpaDES.tools::rasterizeReduced(reduced = cohortDataBroad,
-                                                   fullRaster = pixelGroupMap,
-                                                   newRasterCols = "treeB",
-                                                   mapcode = "pixelGroup")
-    # 2. Create the conifer table
-    cohortDataConifer <- unique(cohortData[treeRSF == "conifer", c("pixelGroup", "treeB")])
-    coniferMap <- SpaDES.tools::rasterizeReduced(reduced = cohortDataConifer,
-                                                 fullRaster = pixelGroupMap,
-                                                 newRasterCols = "treeB",
-                                                 mapcode = "pixelGroup")
-    # 3. Create the totalBiomass table
-    cohortData[, totalBiomass := sum(B), by = "pixelGroup"]
-    cohortDataTotal <- unique(cohortData[, c("pixelGroup", "totalBiomass")])
-    totalBiomassMap <- SpaDES.tools::rasterizeReduced(reduced = cohortDataTotal,
-                                                      fullRaster = pixelGroupMap,
-                                                      newRasterCols = "totalBiomass",
-                                                      mapcode = "pixelGroup")
-    focalMatrix <- circularWindow(ras = pixelGroupMap, focalDistance = 1000)
-    t_broad <- raster::focal(x = broadleafMap, w = focalMatrix, fun = sum, na.rm = TRUE)
-    t_consparse <- raster::focal(x = coniferMap, w = focalMatrix, fun = sum, na.rm = TRUE)
-    total <- raster::focal(x = totalBiomassMap, w = focalMatrix, fun = sum, na.rm = TRUE)
-    
-    p_broad <- t_broad/total
-    names(p_broad) <- "p_broad"
-    p_consparse <- t_consparse/total
-    names(p_consparse) <- "p_consparse"
-  } else {
-    focalMatrix <- circularWindow(ras = rstLCC, focalDistance = 1000)
-    total <- sum(focalMatrix)
-    # Broadleaf 1km proportion
-    # ‘broadleaf dense’, ‘broadleaf open’, ‘mixedwood open’, and ‘mixedwood dense’ 
+
+  # Broadleaf (and mixed, open and dense) 1km proportion
     broadleafClasses <- as.numeric(classTable[fixedLayers %in% c("mix_open", "mix_dens",
                                                                  "broad_dens", "broad_open"), classCode])
     broadleafMap <- raster(rstLCC)
     broadleafMap[rstLCC[] %in% broadleafClasses] <- 1
     t_broad <- raster::focal(x = broadleafMap, w = focalMatrix, fun = sum, na.rm = TRUE)
-    p_broad <- t_broad/total
+    p_broad <- t_broad/denominatorRaster
     names(p_broad) <- "p_broad"
 
     # Conifer Sparse 1km proportion
@@ -152,9 +119,8 @@ makeSimulatedLayers <- function(fixedLayers,
     coniferMap <- raster(rstLCC)
     coniferMap[rstLCC[] %in% coniferClasses] <- 1
     t_consparse <- raster::focal(x = coniferMap, w = focalMatrix, fun = sum, na.rm = TRUE)
-    p_consparse <- t_consparse/total
+    p_consparse <- t_consparse/denominatorRaster
     names(p_consparse) <- "p_consparse"
-  }
 
   # Assertions
   if (makeAssertions){
@@ -163,6 +129,7 @@ makeSimulatedLayers <- function(fixedLayers,
                        filename = file.path(Paths$outputPath,
                                             "tmp_fireCalcLay"),
                        overwrite = TRUE, format = "GTiff")
+
     testthat::expect_true(all(minValue(pixelsSum) == 0, maxValue(pixelsSum) == 1), 
                           label = "Proportion layers were not correctly built. Please debug. 
                           Sum of layers == 1 ")

@@ -5,7 +5,7 @@ RSFModel <- function(coeffTablAndValues,
                      binningTable,
                      pathOut,
                      shp,
-                     cropRSFToShp){
+                     cropRSFToShp = TRUE){
 
   message("Forecasting caribou habitat from RSF ...")
     modsPred <- lapply(X = names(coeffTablAndValues), FUN = function(modelType) {

@@ -136,6 +136,9 @@ defineModule(sim, list(
                  sourceURL = "https://drive.google.com/file/d/1KXNlCN9iBLcPBcEge469fU9Kvws2trAc"),
     expectsInput(objectName = "runName", objectClass = "character",
                  desc = "runName relates to the area ran for the simulation. Defaults is to stop without it",
+                 sourceURL = NA),
+    expectsInput(objectName = "sppEquiv", objectClass = "data.table",
+                 desc = "table of species equivalencies. See LandR::sppEquivalencies_CA.", 
                  sourceURL = NA)
   ),
   outputObjects = bindrows(
@@ -177,12 +180,6 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
         warning(paste0("Vegetation layers not found for year ", time(sim),
                        ". Simulations will NOT use simulated vegetation"))
       }
-      if (P(sim)$simulationProcess == "dynamic"){
-        # Prepare the Forest Class ~ Age + Biomass model
-        sim$forestClassModel <- makeForestClassModel(pixelGroupMap = mod$pixelGroupMap,
-                                                     cohortData = mod$cohortData,
-                                                     rstLCC = sim$rstLCC)
-      }
       # schedule future event(s)
       sim <- scheduleEvent(sim, time(sim) + P(sim)$predictionInterval, "caribouRSF_NT", "gettingData")
       if (P(sim)$predictLastYear){
@@ -192,8 +189,21 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
     },
     preparingLayers = {
       if (P(sim)$simulationProcess == "dynamic"){
-        
-        currRstLCC <- makeLCCfromCohortData() # This raster needs to be already the land cover raster
+        currRstLCC <- makeLCCfromCohortData(cohortData = mod$cohortData,
+                                            pixelGroupMap = mod$pixelGroupMap,
+                                            lccClassTable = data.table(
+                                              standLeading = c("pureCon_dense", "pureCon_open", "pureCon_sparse",
+                                                               "pureCon_sparse",
+                                                               "pureBroad_dense", "pureBroad_open", "pureBroad_sparse",
+                                                               "mixed_dense", "mixed_open", "mixed_sparse"), 
+                                              LCCclass = c(1,6,8,32,
+                                                           2,11,11, 
+                                                           3,13,13)), # HARDCODED TO MATCH LCC05
+                                            deciduousCoverDiscount = P(sim)$deciduousCoverDiscount,
+                                            species = sim[["sppEquiv"]][[sim[["runName"]]]],
+                                            leadingSpThreshold = P(sim)$leadingSpThreshold,
+                                            decidousSp = P(sim)$decidousSp,
+                                            rstLCC = sim$rstLCC) # This raster needs to be already the land cover raster
                                  # after landscape changes (i.e. burns and coming from cohort data)
       } else {
         currRstLCC <- sim$caribouLCC
@@ -201,7 +211,7 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
         sim$fireLayers <- composeFireLayers(currentTime = time(sim),
                                             historicalFires = sim$historicalFires,
                                             pathData = dataPath(sim),
-                                            species = sim[["sppEquiv"]][[sim[["runName"]]]], #TODO remove "hardcoded"
+                                            species = sim[["sppEquiv"]][[sim[["runName"]]]],
                                             fireLayers = sim$fireLayers,
                                             cohortData = mod$cohortData,
                                             pixelGroupMap = mod$pixelGroupMap,
@@ -210,13 +220,22 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                                             "UplandConifer", "UplandBroadleaf"),
                                             yearClasses = c(10, 20, 30, 40, 60),
                                             simulationProcess = P(sim)$simulationProcess,
-                                            correspondingClassesValues = list("dynamic" = list("Lowlands" = c(8, 17, 19, 31:32),
-                                                                                               "UplandsNonTreed" = c(23, 16, 18, 
-                                                                                                                     25, 33, 36, 39)), # Converted EOSD to LCC05 values
-                                                                              "static" = list("Lowlands" = c(81:83, 100, 213),
-                                                                                              "UplandsNonTreed" = c(40, 51, 52),
-                                                                                              "UplandConifer" = c(211, 212),
-                                                                                              "UplandBroadleaf" = c(221, 222, 231, 232))),
+                                            # For correspondingClassesValues see: https://drive.google.com/drive/u/0/folders/1911W_RGwcC36HovCHtpvf806w2GHDiuO
+                                            # This is how the model was built by GNWT
+                                            correspondingClassesValues = list(
+                                              "dynamic" = list( # Converted EOSD to LCC05 values
+                                                "Lowlands" = c(8, 17, 19, 31:32),
+                                                "UplandsNonTreed" = c(23, 16, 18),
+                                                "UplandConifer" = c(1, 6),
+                                                "UplandBroadleaf" = c(2, 3, 11, 13) # 15 shouldn't exist (broadleaf sparse)
+                                              ),
+                                              "static" = list( # Original EOSD values
+                                                "Lowlands" = c(81:83, 100, 213),
+                                                "UplandsNonTreed" = c(40, 51, 52),
+                                                "UplandConifer" = c(211, 212),
+                                                "UplandBroadleaf" = c(221, 222, 231, 232)
+                                              )
+                                            ), 
                                             # "UplandsConifer" & "UplandsBroadleaf" come from biomass!
                                             thisYearsFires = sim$rstCurrentBurnList,
                                             rstLCC = currRstLCC,
@@ -236,11 +255,12 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                                pixelGroupMap = mod$pixelGroupMap,
                                                simulationProcess = P(sim)$simulationProcess,
                                                rstLCC = currRstLCC,
+                                               rasterToMatch = sim$rasterToMatch,
                                                decidousSp = P(sim)$decidousSp,
                                                currentTime = time(sim),
                                                historicalFires = sim$historicalFires,
                                                pathData = dataPath(sim),
-                                               species = sim$sppEquiv$NWT_BCR6,
+                                               species = sim[["sppEquiv"]][[sim[["runName"]]]],
                                                makeAssertions = P(sim)$makeAssertions) #TODO remove "hardcoded" spEquiv
         
         # Put all layers together
@@ -343,16 +363,16 @@ Trying to find it in inputPath", immediate. = TRUE)
                                           overwrite = TRUE)
   }
   if (!suppliedElsewhere(object = "classTable", sim = sim)){
+    sim$classTable <- prepInputs(url = extractURL("classTable"),
+                                 targetFile = "landcoverClassesTable.csv",
+                                 destinationPath = dataPath(sim), 
+                                 fun = "data.table::fread") 
     if (P(sim)$simulationProcess == "static"){
-      sim$classTable <- prepInputs(url = "https://drive.google.com/file/d/1B5_FX50ejwCpk4RrLV5hzKAxK6W6cLPA",
-                                   destinationPath = dataPath(sim), 
-                                   fun = "data.table::fread") 
-      
+      sim$classTable <- sim$classTable[, c("fixedLayers", "classCodeEOSD")]
+      names(sim$classTable)[names(sim$classTable) == "classCodeEOSD"] <- "classCode"
     } else {
-      sim$classTable <- prepInputs(url = extractURL("classTable"),
-                                   destinationPath = dataPath(sim), 
-                                   fun = "data.table::fread")
-      
+      sim$classTable <- sim$classTable[, c("fixedLayers", "classCodeLCC05")]
+      names(sim$classTable)[names(sim$classTable) == "classCodeLCC05"] <- "classCode"
     }
   }
   if (!suppliedElsewhere(object = "studyArea", sim = sim)){

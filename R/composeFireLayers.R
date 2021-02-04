@@ -12,13 +12,23 @@ composeFireLayers <- function(currentTime,
                               landClasses = c("Lowlands", "UplandsNonTreed",
                                               "UplandsConifer", "UplandsBroadleaf"),
                               yearClasses = c(10, 20, 30, 40, 60),
-                              correspondingClassesValues = list("dynamic" = list("Lowlands" = c(8, 17, 19, 31:32),
-                                                                                 "UplandsNonTreed" = c(23, 16, 18, 
-                                                                                      25, 33, 36, 39)), # Converted EOSD to LCC05 values
-                                                                "static" = list("Lowlands" = c(81:83, 100, 213),
-                                                                                "UplandsNonTreed" = c(40, 51, 52),
-                                                                                "UplandConifer" = c(211, 212),
-                                                                                "UplandBroadleaf" = c(221, 222, 231, 232))), # Original EOSD values
+                              # For correspondingClassesValues see: https://drive.google.com/drive/u/0/folders/1911W_RGwcC36HovCHtpvf806w2GHDiuO
+                              # This is how the model was built by GNWT
+                              correspondingClassesValues = list(
+                                "dynamic" = list(
+                                  "Lowlands" = c(8, 17, 19, 31:32),
+                                  "UplandsNonTreed" = c(23, 16, 18),
+                                  "UplandConifer" = c(1, 6),
+                                  "UplandBroadleaf" = c(2, 3, 11, 13) # 15 shouldn't exist (broadleaf sparse)
+                                ),
+                                # Converted EOSD to LCC05 values
+                                "static" = list(
+                                  "Lowlands" = c(81:83, 100, 213),
+                                  "UplandsNonTreed" = c(40, 51, 52),
+                                  "UplandConifer" = c(211, 212),
+                                  "UplandBroadleaf" = c(221, 222, 231, 232)
+                                )
+                              ), # Original EOSD values
                               # "UplandsConifer" & "UplandsBroadleaf" come from biomass!
                               thisYearsFires,
                               rstLCC){
@@ -114,66 +124,9 @@ composeFireLayers <- function(currentTime,
     minFireYear <- 1+(currentTime - yearClassesSeq[which(yearClassesSeq == allClasses[rowIndex, "yearClasses"])])
     burnClass <- allClasses[rowIndex, "landClasses"]
     # 2. Make the landcover classes
-    # OPTION 1: Make a static landcover class as DeMars et al., 2019 did --> argument simulationProcess == "static"
-    # OPTION 2: Make a dynamic landcover class based on LandR -->  argument simulationProcess == "dynamic"
-    if (simulationProcess == "static"){
-        rstLCCclasses <- correspondingClassesValues[[simulationProcess]][[burnClass]]
-        currRas <- raster(rstLCC)
-        currRas[rstLCC[] %in% rstLCCclasses] <- 1
-    } else {
-      if (!burnClass %in% names(correspondingClassesValues[[simulationProcess]])){ # IF BURN CLASS IS CONIFER OR BROADLEAF
-        # Define leading species which pixels are broadleaf
-        # 1. Make a table of species
-        treeSpecies <- data.table(speciesCode = c(decidousSp,
-                                                  species[!species %in% decidousSp]),
-                                  treeRSF = c(rep("broadleaf", 
-                                                  times = length(decidousSp)),
-                                              rep("conifer", 
-                                                  times = length(species[!species %in% decidousSp]))))
-        # 2. Define which ones are conifers and which are broadleaf
-        cohortData <- merge(cohortData, treeSpecies)
-        browser()
-        cohortData[, treeB := sum(B), by = c("pixelGroup", "treeRSF")]
-        
-        # 3. Define which group is the dominant one in each pixelGroup
-        setkey(cohortData, treeB)
-        cohortData[, dominantGroup := treeRSF[.N], by = "pixelGroup"]
-        
-        # 4. Create the broadleaf map
-        cohortDataRed <- cohortData[, c("pixelGroup", "dominantGroup"), 
-                                    with = FALSE]
-        setkey(cohortDataRed, pixelGroup)
-        cohortDataRed <- unique(cohortDataRed,  by = "pixelGroup")
-        # Need to match the dominantGroup and the burnClass
-        conbroad <- data.table(dominantGroup = c("conifer", "broadleaf"),
-                               dominantGroupCode = c(1, 2))
-        cohortDataRed <- merge(cohortDataRed, conbroad, by = "dominantGroup")
-        biomassMap <- SpaDES.tools::rasterizeReduced(reduced = cohortDataRed,
-                                                     fullRaster = pixelGroupMap,
-                                                     newRasterCols = "dominantGroupCode",
-                                                     mapcode = "pixelGroup")
-        
-        whichBurnClass <- ifelse(grepl("conifer", burnClass, ignore.case = TRUE),
-                                 "conifer",
-                                 "broadleaf")
-        valueToSelect <- conbroad[dominantGroup == whichBurnClass, dominantGroupCode]
-        currRas <- raster(biomassMap)
-        currRas[biomassMap == valueToSelect] <- 1
-        
-        # Need to exclude conifer or broadleaf pixels from lowlands and nontreed
-        # We might have some biomass, but that might come from 1 tree, which doesn't
-        # mean the pixel is a forested upland!
-        # 1. Exclude the biomass from those pixels!
-        currRas[rstLCC[] %in% unlist(correspondingClassesValues[[simulationProcess]], 
-                                     use.names = FALSE)] <- NA
-      } else {
-        # IF BURN CLASS IS LOWLANDS OR NONTREED
-        # Classes in rstLCC that correspond to this specific class
-        rstLCCclasses <- correspondingClassesValues[[simulationProcess]][[burnClass]]
-        currRas <- raster(rstLCC)
-        currRas[rstLCC[] %in% rstLCCclasses] <- 1
-      }
-    }
+    rstLCCclasses <- correspondingClassesValues[[simulationProcess]][[burnClass]]
+    currRas <- raster(rstLCC)
+    currRas[rstLCC[] %in% rstLCCclasses] <- 1
     
     # 3. Need to identify which pixels of this specific class burned
     counterRasterThisClass <- raster(counterRaster)
