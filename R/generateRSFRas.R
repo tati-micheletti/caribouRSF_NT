@@ -109,7 +109,7 @@ if (names(ras) == "relativeSelection"){
      att <- NULL
    }
    print(rasterVis::levelplot(rasBinned,
-              sub = paste0("Caribou RSF in 2017"),
+              sub = paste0("Caribou RSF in ", currentTime),
               att = att,
               margin = FALSE,
               maxpixels = 6e6,
