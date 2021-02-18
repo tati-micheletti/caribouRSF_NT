@@ -41,7 +41,7 @@ defineModule(sim, list(
     defineParameter(".useCache", "character", ".inputObjects", NA, NA,
                     desc = paste0("Internal. Can be names of events or the whole module ",
                                   "name; these will be cached by SpaDES")),
-    defineParameter("cropRSFToShp", "logical", "TRUE", NA, NA,
+    defineParameter("cropRSFToShp", "logical", "FALSE", NA, NA,
                     desc = paste0("Should the RSF be cropped to a smaller extent? ",
                                   "If TRUE, shp in RSFmModel HAS to be provided")),
     defineParameter("yearsToSaveCaribouLayers", "numeric", NA, NA, NA,
@@ -316,7 +316,8 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                                                                   pathData = dataPath(sim),
                                                                                   binningTable = sim$binningTable,
                                                                                   pathOut = outputPath(sim),
-                                                                                  shp = caribouArea2)
+                                                                                  shp = caribouArea2,
+                                                                                  cropRSFToShp = P(sim)$cropRSFToShp)
       # schedule future event(s)
       sim <- scheduleEvent(sim, time(sim) + P(sim)$predictionInterval, "caribouRSF_NT", "calculatingRSF")
       if (P(sim)$predictLastYear){
