@@ -20,16 +20,18 @@ makeSimulatedLayers <- function(fixedLayers,
   pixelsToClassify <- rstLCC
   pixelsToClassify[!is.na(pixelsToClassify)] <- 1
   allCurrentlyBurnedPixels <- raster::calc(fireLayers, fun = sum, na.rm = TRUE, 
-                                           filename = file.path(Paths$outputPath,
-                                                                "tmp_fireCalcLay"),
+                                           filename = file.path(Paths$rasterPath,
+                                                                paste0("tmp_fireCalcLay",
+                                                                       basename(tempfile(pattern = "")))),
                                            overwrite = TRUE, format = "GTiff")
   allCurrentlyBurnedPixels[] <- allCurrentlyBurnedPixels[]
   names(allCurrentlyBurnedPixels) <- "fireLayers"
   pixelsToClassify[allCurrentlyBurnedPixels[] == 1] <- 0
   # 1B. Remove all fixedLayers pixels
   allFixedLayersPixels <- raster::calc(fixedLayers, fun = sum, na.rm = TRUE, 
-                                       filename = file.path(Paths$outputPath,
-                                                            "tmp_fireCalcLay"),
+                                       filename = file.path(Paths$rasterPath,
+                                                            paste0("tmp_fireCalcLay",
+                                                                   basename(tempfile(pattern = "")))),
                                        overwrite = TRUE, format = "GTiff")
   allFixedLayersPixels[] <- allFixedLayersPixels[]
   names(allFixedLayersPixels) <- "fixedLayers"
@@ -72,9 +74,11 @@ makeSimulatedLayers <- function(fixedLayers,
     # needs to be 1 or NA for all pixels
     message("Verifying the constructed simulated layers...")
     pixelsSum <- raster::calc(binaryLayersStack, fun = sum, na.rm = TRUE, 
-                              filename = file.path(Paths$outputPath,
-                                                   "tmp_fireCalcLay"),
+                              filename = file.path(Paths$rasterPath,
+                                                   paste0("tmp_fireCalcLay",
+                                                          basename(tempfile(pattern = "")))),
                               overwrite = TRUE, format = "GTiff")
+    pixelsSum[] <- pixelsSum[]
     testthat::expect_true(all.equal(sort(unique(pixelsSum[])), c(0, 1)),
                           label = "S layers were not correctly built. Please debug. 
                           Sum of layers == 1 ")
@@ -126,10 +130,11 @@ makeSimulatedLayers <- function(fixedLayers,
   if (makeAssertions){
     message("Verifying the constructed proportion layers...")
     pixelsSum <-  calc(raster::stack(p_broad, p_consparse), fun = sum, na.rm = TRUE, 
-                       filename = file.path(Paths$outputPath,
-                                            "tmp_fireCalcLay"),
+                       filename = file.path(Paths$rasterPath,
+                                            paste0("tmp_fireCalcLay",
+                                                   basename(tempfile(pattern = "")))),
                        overwrite = TRUE, format = "GTiff")
-
+    pixelsSum[] <- pixelsSum[]
     testthat::expect_true(all(minValue(pixelsSum) == 0, maxValue(pixelsSum) == 1), 
                           label = "Proportion layers were not correctly built. Please debug. 
                           Sum of layers == 1 ")

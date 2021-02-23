@@ -105,9 +105,11 @@ composeFireLayers <- function(currentTime,
                                                 subThisYears), 
                                   fun = max, 
                                   na.rm = TRUE, 
-                                  filename = file.path(Paths$outputPath,
-                                                       "tmp_fireCalcLay"),
+                                  filename = file.path(Paths$rasterPath,
+                                                       paste0("tmp_fireCalcLay",
+                                                              basename(tempfile(pattern = "")))),
                                   overwrite = TRUE, format = "GTiff")
+    counterRaster[] <- counterRaster[]
     # 4. Delete years outside of the range
     counterRaster[counterRaster < minYear] <- 0
   }
@@ -148,9 +150,11 @@ composeFireLayers <- function(currentTime,
     # needs to be 1 or NA for all pixels
     message("Verifying the constructed fire layers...")
     pixelsSum <- raster::calc(burnedLayers, fun = sum, na.rm = TRUE, 
-                              filename = file.path(Paths$outputPath,
-                                                   "tmp_fireCalcLay"),
+                              filename = file.path(Paths$rasterPath,
+                                                   paste0("tmp_fireCalcLay",
+                                                          basename(tempfile(pattern = "")))),
                               overwrite = TRUE, format = "GTiff")
+    pixelsSum[] <- pixelsSum[]
     testthat::expect_true(all.equal(sort(unique(pixelsSum[])), c(0, 1)), 
                           label = "Fire layers were not correctly built. Please debug. 
                           Sum of layers == 1 ")

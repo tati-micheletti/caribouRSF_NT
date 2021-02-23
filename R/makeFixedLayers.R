@@ -16,8 +16,8 @@ makeFixedLayers <- function(fireLayers,
   # Herb = 17
   # 1B. Exclude the ones that were burned in any moment
   anyBurns <- raster::calc(fireLayers, sum, na.rm = TRUE, 
-                           filename = file.path(Paths$outputPath,
-                                                "tmp_fireCalcLay"),
+                           filename = file.path(Paths$rasterPath,
+                                                paste0("tmp_fireCalcLay",basename(tempfile(pattern = "")))),
                            overwrite = TRUE, format = "GTiff")
   # Bring anyBurns to memory as the operation saves a raster in scratch, 
   # which gets cleaned up soon after
@@ -37,9 +37,10 @@ makeFixedLayers <- function(fireLayers,
     # needs to be 1 or NA for all pixels
     message("Verifying the constructed fire layers...")
     pixelsSum <- raster::calc(fixedLayers, fun = sum, na.rm = TRUE, 
-                              filename = file.path(Paths$outputPath,
-                                                   "tmp_fireCalcLay"),
+                              filename = file.path(Paths$rasterPath,
+                                                   paste0("tmp_fireCalcLay",basename(tempfile(pattern = "")))),
                               overwrite = TRUE, format = "GTiff")
+    pixelsSum[] <- pixelsSum[]
     testthat::expect_true(all.equal(sort(unique(pixelsSum[])), c(0, 1)), 
                           label = "Fixed layers were not correctly built. Please debug. 
                           Sum of layers == 1 ")
