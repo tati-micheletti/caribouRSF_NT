@@ -13,42 +13,63 @@ knitr::opts_chunk$set(echo = TRUE, results = "hold")
 
 # Overview
 
-Provide an overview of what the module does / how to use the module.
-
-Module documentation should be written so that others can use your module.
-This is a template for module documentation, and should be changed to reflect your module.
-
-## R Markdown
-
-R Markdown syntax allows R code, outputs, and figures to be rendered in the documentation.
-
-For help writing in R Markdown, see http://rmarkdown.rstudio.com/.
+This module runs the NT1 caribou RSF prepared by DeMars et al (2020). When no parameters are changed and no inputs are provided (i.e. Time, fire layers, disturbance layers), the module replicates DeMars work. This module can also be used for RSF forecasting, if right inputs are provided. 
 
 # Usage
 
 ```{r module_usage}
 library(SpaDES.core)
 
-setPaths(modulePath = file.path("C:/Users/Tati/Documents/GitHub"))
+setPaths(modulePath = file.path(getwd(), "modules"), 
+         cachePath = , 
+         inputPath = , 
+         outputPath = )
 getPaths() # shows where the 4 relevant paths are
+# Please set the paths where you would like the data
 
-times <- list(start = 0, end = 10)
+times <- list(start = 2017, end = 2017)
 
 parameters <- list(
-  #.progress = list(type = "text", interval = 1), # for a progress bar
-  ## If there are further modules, each can have its own set of parameters:
-  #module1 = list(param1 = value1, param2 = value2),
-  #module2 = list(param1 = value1, param2 = value2)
+  "simulationProcess" = "static",
+  "cropRSFToShp" = TRUE, # Set this to FALSE (default) if you don't want the projection to be cropped
+  "yearsToSaveCaribouLayers" = 2017,
+  "predictLastYear" = FALSE
 )
+
 modules <- list("caribouRSF_NT")
-objects <- list()
-inputs <- list()
-outputs <- list()
 
-mySim <- simInit(times = times, params = parameters, modules = modules,
-                 objects = objects)
+## OBJECTS ##
+# Here we provide the raster that should be used as the template (mainly for resolution and projection), names `rasterToMatch`, as well as the study area (`studyArea`) that we want to crop our results to. As a test,
+# I provide here a small study area in the NWT, within NT1. However, the code for the NT1 study area is   
 
-mySimOut <- spades(mySim)
+studyArea <- Cache(prepInputs, targetFile = "Edehzhie.shp",
+                  alsoExtract = "similar",
+                  url = "https://drive.google.com/open?id=1VP91AyIeGCFwJS9oPSEno4_SbtJQJMh7",
+                  destinationPath = Paths$inputPath,
+                  userTags = c(stepCacheTag, 
+                               "outFun:Cache",
+                               "step:prepEdehzhie"))
+Edehzhie$Name <- Edehzhie$NAME_1
+
+rasterToMatch <- Cache(prepInputs, targetFile = "EOSD_covType.tif",
+                                      archive = "EOSD_covType.zip",
+                                      alsoExtract = "similar",
+                                      url = "https://drive.google.com/file/d/19Sk6F_UaAt__4fvNjPZYb3lxJtVhblCD/view?usp=sharing",
+                                      studyArea = studyArea,
+                                      destinationPath = Paths$inputPath,
+                                      filename2 = "rasterToMatch",
+                                      fun = "raster::raster",
+                                      userTags = c(stepCacheTag,
+                                                   "outFun:Cache", "step:prepRTM"))
+objects <- list(studyArea = studyArea,
+                rasterToMatch = rasterToMatch)
+
+caribouRSF <- simInitAndSpades(times = times,
+                               params = parameters,
+                               modules = modules,
+                               objects = objects, debug = 1, 
+                               cache = TRUE)
+
 ```
 
 # Parameters
