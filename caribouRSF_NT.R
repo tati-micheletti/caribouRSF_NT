@@ -388,8 +388,6 @@ Trying to find it in inputPath", immediate. = TRUE)
     sim$rasterToMatch <- Cache(prepInputs, url = extractURL("rasterToMatch"), 
                                studyArea = sim$studyArea,
                                targetFile = "RTM.tif", destinationPath = dataPath(sim), 
-                               # useCloud = P(sim)$.useCloud,
-                               # cloudFolderID = sim$cloudFolderID, 
                                overwrite = TRUE, filename2 = NULL,
                                omitArgs = c("destinationPath", "cloudFolderID", "useCloud", 
                                             "overwrite", "filename2"))
@@ -399,7 +397,7 @@ Trying to find it in inputPath", immediate. = TRUE)
                                    targetFile = "NT1_BOCA_spatial_units_for_landscape_projections.shp",
                                    destinationPath = Paths$inputPath,
                                    alsoExtract = "similar",
-                                   rasterToMatch = rasterToMatch)
+                                   rasterToMatch = sim$rasterToMatch)
   }
   
   if (P(sim)$simulationProcess == "dynamic"){
