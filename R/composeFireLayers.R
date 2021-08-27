@@ -90,15 +90,22 @@ composeFireLayers <- function(currentTime,
     minYear <- 1+(currentTime - max(yearClasses))
     maxYearFromData <- maxValue(counterRaster)
     # 2. Get years we don't have from data from simulation
-    subThisYears <- raster::stack(lapply(maxYearFromData:currentTime, function(Y){
-      y <- thisYearsFires[[grep(Y, names(thisYearsFires))]]
-      y[y > 0] <- Y
-      names(y) <- paste0("Year", Y)
-      y <- postProcess(y, 
-                       rasterToMatch = rstLCC, 
-                       destinationPath = pathData)
-      return(y)
+    # This needs to happen only if we actually need the thisYearsFires (i.e. simulation)
+    # If we are performing only one year (i.e. updating RSF or running the 2017 comparison)
+    # we don't need the simulated fires
+    if (!is.null(thisYearsFires)){
+      subThisYears <- raster::stack(lapply(maxYearFromData:currentTime, function(Y){
+        y <- thisYearsFires[[grep(Y, names(thisYearsFires))]]
+        y[y > 0] <- Y
+        names(y) <- paste0("Year", Y)
+        y <- postProcess(y, 
+                         rasterToMatch = rstLCC, 
+                         destinationPath = pathData)
+        return(y)
       }))
+    } else {
+      subThisYears <- NULL
+    }
 
     # 3. Add the new years
     counterRaster <- raster::calc(raster::stack(counterRaster, 
