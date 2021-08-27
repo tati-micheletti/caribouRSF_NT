@@ -352,8 +352,22 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
   if (!suppliedElsewhere("rstCurrentBurnList", sim)){
     warning("rstCurrentBurnList needs to be provided and was not found in the simList. 
 Trying to find it in inputPath", immediate. = TRUE)
-    sim$rstCurrentBurnList <- readRDS(file.path(Paths$inputPath, 
-                                                "rstCurrentBurnList_year2100.rds"))
+    rstCurBurnPath <- file.path(Paths$inputPath, 
+              "rstCurrentBurnList_year2100.rds")
+    if (!file.exists(rstCurBurnPath)){
+      if (P(sim)$simulationProcess == "dynamic"){
+        stop("rstCurrentBurnList was not found and it is needed when performing simulations. 
+        Please provide it as an object to the simulation. 
+        rstCurrentBurnList is a list of fires by year (raster format).
+             These layers are produced by simulation. Alternatively, if you 
+             are updating RSF predictions, make sure you set the parameter 
+             simulationProcess  = 'static' or pass rstCurrentBurnList = NULL")
+      } else {
+        sim$rstCurrentBurnList <- NULL 
+      }
+    } else {
+      sim$rstCurrentBurnList <- readRDS(rstCurBurnPath)
+      }
   }
   if (!suppliedElsewhere("caribouCoefTable", sim)){
     sim$caribouCoefTable <- prepInputs(url = extractURL("caribouCoefTable"),
