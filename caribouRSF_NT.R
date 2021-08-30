@@ -22,6 +22,10 @@ defineModule(sim, list(
     defineParameter("predictLastYear", "logical", TRUE, NA, NA, 
                     paste0("If last year of simulation is not multiple of",
                            " predictionInterval, should it predict for the last year too?")),
+    defineParameter("rowOfFixedLayers", "numeric", 8, NA, NA, 
+                    paste0("This is the number of rows from the classTable which contain",
+                           " fixed covariates (i.e. water, shrub, herbs, etc.)",
+                           " When providing classTable yourself, you need to inform this parameter")),
     defineParameter(".useCache", "logical", FALSE, NA, NA, "Should this entire module be run with caching activated?"),
     defineParameter("nBootstrap", "numeric", 100, NA, NA, "How many bootstrap replicates do we want for the coefficients?"),
     defineParameter("makeAssertions", "logical", TRUE, NA, NA, "Should layers be tested for correcteness? This increases simulation time"),
@@ -60,8 +64,16 @@ defineModule(sim, list(
                  desc = "Wetland raster for excluding water from anthropogenic layer",
                  sourceURL = NA),
     expectsInput(objectName = "classTable", objectClass = "data.table",
-                 desc = "Classification table for covariate/class",
-                 sourceURL = "https://drive.google.com/file/d/1S4WoDlvCy_XKlSEQe8VLtSMr5mvDbCkQ"),
+                 desc = paste0("Two-column classification table for covariate/class. When providing this ",
+                               "object, the user needs to follow the format:",
+                               "First row: naming (i.e. layers and classCode), ",
+                               "Second row to nth row ('rowOfFixedLayers'): ",
+                               "fixed covariates with naming following the ",
+                               " same covariates used in the RSF model",
+                               "nth row + 1 to end of table: simulated covariates ",
+                               "with naming following the same covariates used ",
+                               "in the RSF model"),
+                 sourceURL = "https://drive.google.com/file/d/1S4WoDlvCy_XKlSEQe8VLtSMr5mvDbCkQ/"),
     expectsInput(objectName = "pixelGroupMap", objectClass = "RasterLayer",
                  desc = paste0("Map of groups of pixels that share the same info from cohortData (sp, age, biomass, etc).",
                                "Here is mainly used to determine old and recent burns based on tree age,",
@@ -245,6 +257,7 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                            rstLCC = currRstLCC,
                                            pathData = dataPath(sim),
                                            makeAssertions = P(sim)$makeAssertions,
+                                           rowOfFixedLayers = P(sim)$rowOfFixedLayers,
                                            classTable = sim$classTable)
         
         # Get the simulated layers: 
@@ -252,6 +265,7 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                                classTable = sim$classTable, 
                                                fireLayers = sim$fireLayers,
                                                cohortData = mod$cohortData,
+                                               rowOfSimulLayers = P(sim)$rowOfFixedLayers+1,
                                                pixelGroupMap = mod$pixelGroupMap,
                                                simulationProcess = P(sim)$simulationProcess,
                                                rstLCC = currRstLCC,
@@ -407,7 +421,7 @@ Trying to find it in inputPath", immediate. = TRUE)
                                             "overwrite", "filename2"))
   }
   if (!suppliedElsewhere("NT1shapefile", sim)){
-    sim$NT1shapefile <- prepInputs(url = "https://drive.google.com/open?id=1Vqny_ZMoksAjji4upnr3OiJl2laGeBGV",
+    sim$NT1shapefile <- prepInputs(url = "https://drive.google.com/file/d/1AOfJmIzZqQvQWwC7fJWEkmXCj3y6uwWF",
                                    targetFile = "NT1_BOCA_spatial_units_for_landscape_projections.shp",
                                    destinationPath = Paths$inputPath,
                                    alsoExtract = "similar",
@@ -425,7 +439,7 @@ Trying to find it in inputPath", immediate. = TRUE)
     sim$caribouLCC <- Cache(prepInputs, targetFile = "EOSD_covType.tif",
                                       archive = "EOSD_covType.zip",
                                       alsoExtract = "similar",
-                                      url = "https://drive.google.com/file/d/19Sk6F_UaAt__4fvNjPZYb3lxJtVhblCD/view?usp=sharing",
+                                      url = "https://drive.google.com/file/d/1l0Ne1R95xpHJGf0--QY9iFGYmgQZhljn",
                                       studyArea = sim$studyArea,
                                       destinationPath = Paths$inputPath,
                                       filename2 = "EOSD_BCR6",
