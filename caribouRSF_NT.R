@@ -457,6 +457,7 @@ Trying to find it in inputPath", immediate. = TRUE)
                                          url = extractURL("anthropogenicLayers"),
                                          destinationPath = dataPath(sim), 
                                          studyArea = sim$studyArea,
+                                         filename2 = "anthropogenicLayers",
                                          rasterToMatch = sim$rasterToMatch,
                                          fun = "raster::stack",
                                          userTags = c("FUN:.inputObjs", 
