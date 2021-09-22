@@ -99,7 +99,7 @@ defineModule(sim, list(
                          Distance to polygonal disturbance, 
                          Distance to settlement with the corresponding exponential equations (see
                  DeMars, Hodson, et al 2019 for details)", 
-                 sourceURL = "https://drive.google.com/file/d/15RfDLv-EuzYrNZgP-aaE4zuyn_vd8aJu"),
+                 sourceURL = "https://drive.google.com/file/d/1A4BBYFDAzllpPFyj29cM0MC6nF9A6-kv/"),
     expectsInput(objectName = "fixedLayers", objectClass = "character", 
                  desc = "Fixed layers for the Caribou RSF model, currently: 
                          water,
