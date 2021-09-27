@@ -64,7 +64,7 @@ studyArea <- Cache(prepInputs, targetFile = "Edehzhie.shp",
                   destinationPath = Paths$inputPath,
                   userTags = c("outFun:Cache",
                                "step:prepEdehzhie"))
-Edehzhie$Name <- Edehzhie$NAME_1
+studyArea$Name <- Edehzhie$NAME_1
 
 rasterToMatch <- Cache(prepInputs, targetFile = "EOSD_covType.tif",
                                       archive = "EOSD_covType.zip",
