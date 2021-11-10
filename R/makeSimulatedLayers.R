@@ -3,7 +3,7 @@ makeSimulatedLayers <- function(fixedLayers,
                                 historicalFires,
                                 fireLayers,
                                 cohortData,
-                                species,
+                                # species, # not implemented yet
                                 classTable,
                                 pixelGroupMap,
                                 decidousSp,

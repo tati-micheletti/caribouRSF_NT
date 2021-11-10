@@ -3,6 +3,7 @@ generateRSFRas <- function(modelType,
                            currentTime, 
                            responseTable, 
                            rasName, 
+                           runName,
                            pathOut,
                            binningTable,
                            shp,
@@ -77,7 +78,7 @@ if (names(ras) == "relativeSelection"){
 }
     writeRaster(x = ras, 
                 filename = file.path(pathOut, 
-                                     paste0(rasName[r], modelType, 
+                                     paste0(runName, "_", rasName[r], modelType, 
                                             "_Year", currentTime)),
                 format = "GTiff", overwrite = TRUE)
     
