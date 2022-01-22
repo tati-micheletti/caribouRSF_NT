@@ -411,7 +411,7 @@ Trying to find it in inputPath", immediate. = TRUE)
     sim$caribouLCC <- Cache(prepInputs, targetFile = "EOSD_covType.tif",
                                       archive = "EOSD_covType.zip",
                                       alsoExtract = "similar",
-                                      url = "https://drive.google.com/file/d/19Sk6F_UaAt__4fvNjPZYb3lxJtVhblCD/view?usp=sharing",
+                                      url = "https://drive.google.com/file/d/16Eha9ZOToUszHln4UtOl6f6Qs-br1_l0/view?usp=sharing",
                                       studyArea = sim$studyArea,
                                       destinationPath = Paths$inputPath,
                                       filename2 = "EOSD_BCR6",
