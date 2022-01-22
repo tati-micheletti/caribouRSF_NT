@@ -8,6 +8,7 @@ makeSimulatedLayers <- function(fixedLayers,
                                 pixelGroupMap,
                                 decidousSp,
                                 rstLCC,
+                                rowOfSimulLayers,
                                 rasterToMatch,
                                 simulationProcess,
                                 pathData,
@@ -41,7 +42,6 @@ makeSimulatedLayers <- function(fixedLayers,
   biomassClassified[pixelsToClassify[] == 0] <- 0
 
   templateRas <- raster(rstLCC)
-  rowOfSimulLayers <- 9 #TODO # Softcode!! Will need to clear cache, no time now
   simulatedLayers <- raster::stack(lapply(rowOfSimulLayers:NROW(classTable), function(index){
     message(paste0("Building ", classTable[["fixedLayers"]][index]," layer..."))
     templateRas[biomassClassified[] %in% eval(parse(text = classTable[["classCode"]][index]))] <- 1

@@ -18,12 +18,12 @@ This module runs the NT1 caribou RSF prepared by DeMars et al (2020). When no pa
 # Usage
 
 ```{r module_usage}
-
 install.packages("Require")
 library("Require")
 Require("SpaDES.core")
 
-# setwd("C:/Path/To/Directory/ProjectFolder") # uncommenting here lets you set a specific path
+# setwd("~/Path/To/Directory/ProjectFolder") # uncommenting here lets you set a specific path
+
 # The suggested folder structure is:
 # ProjectFolder  -- modules -- caribouRSF_NT 
 #               |
@@ -51,6 +51,7 @@ parameters <- list(
   "predictLastYear" = FALSE
 )
 
+# ATTENTION: If you downloaded the module (instead of forking from GitHub, you might need to rename the directory, currently (i.e. 'caribouRSF_NT-main') back to its original name (i.e. 'caribouRSF_NT').
 modules <- list("caribouRSF_NT")
 
 ## OBJECTS ##
@@ -61,10 +62,9 @@ studyArea <- Cache(prepInputs, targetFile = "Edehzhie.shp",
                   alsoExtract = "similar",
                   url = "https://drive.google.com/open?id=1VP91AyIeGCFwJS9oPSEno4_SbtJQJMh7",
                   destinationPath = Paths$inputPath,
-                  userTags = c(stepCacheTag, 
-                               "outFun:Cache",
+                  userTags = c("outFun:Cache",
                                "step:prepEdehzhie"))
-Edehzhie$Name <- Edehzhie$NAME_1
+studyArea$Name <- Edehzhie$NAME_1
 
 rasterToMatch <- Cache(prepInputs, targetFile = "EOSD_covType.tif",
                                       archive = "EOSD_covType.zip",
@@ -74,8 +74,8 @@ rasterToMatch <- Cache(prepInputs, targetFile = "EOSD_covType.tif",
                                       destinationPath = Paths$inputPath,
                                       filename2 = "rasterToMatch",
                                       fun = "raster::raster",
-                                      userTags = c(stepCacheTag,
-                                                   "outFun:Cache", "step:prepRTM"))
+                                      userTags = c("outFun:Cache", "step:prepRTM"))
+
 objects <- list(studyArea = studyArea,
                 rasterToMatch = rasterToMatch)
 
@@ -98,8 +98,10 @@ knitr::kable(df_params)
 
 # Outputs  
 
-To explore the outputted RSF map, please use:
+To explore the outputted RSF map, the coefficients used, and the layers that generated the maps, please use:
 
 ```{r outputs, echo = FALSE}
-
+caribouRSF$predictedPresenceProbability
+caribouRSF$coeffTablAndValues
+caribouRSF$caribouLayers
 ```

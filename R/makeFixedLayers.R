@@ -2,6 +2,7 @@ makeFixedLayers <- function(fireLayers,
                             pathData,
                             classTable,
                             rstLCC,
+                            rowOfFixedLayers,
                             makeAssertions = TRUE){
   # 1. Make the following layers (once EOSD is directly used, we need to review this):
   templateRas <- raster(rstLCC)
@@ -22,7 +23,6 @@ makeFixedLayers <- function(fireLayers,
   # Bring anyBurns to memory as the operation saves a raster in scratch, 
   # which gets cleaned up soon after
   anyBurns[] <- anyBurns[]
-  rowOfFixedLayers <- 8 #TODO # Softcode!! Will need to clear cache, no time now
   fixedLayers <- raster::stack(lapply(1:rowOfFixedLayers, function(index){
     message(paste0("Building ", classTable[["fixedLayers"]][index]," layer..."))
     templateRas[rstLCC[] == classTable[["classCode"]][index]] <- 1
