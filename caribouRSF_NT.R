@@ -482,12 +482,18 @@ Trying to find it in inputPath", immediate. = TRUE)
   }
   
   if (!suppliedElsewhere("historicalFires", sim)){
-    fireYears <- 1991:2017
-    sim$historicalFires <- Cache(fireSenseUtils::getFirePolygons, 
-                           years = fireYears,
-                           studyArea = aggregate(sim$studyArea),
-                           pathInputs = Paths$inputPath, 
-                           userTags = paste0("years:", range(fireYears)))
+    stop(paste0("historicalFires was not supplied. You may try to generate it",
+                " automagically by installing the package usefulFuns and ",
+                "fireSenseUtils and running the function below. Please make ",
+                "sure you restart your system after installing the packages:
+            Require('tati-micheletti/usefulFuns@NWTworking')
+            Require(PredictiveEcology/fireSenseUtils@NWTworking)
+            fireYears <- 1991:2017
+            historicalFires <- fireSenseUtils::getFirePolygons(years = fireYears,
+              studyArea = aggregate(studyArea),
+              pathInputs = Paths$inputPath, 
+              userTags = paste0('years:', range(fireYears)))"))
+    
   }
   
   
