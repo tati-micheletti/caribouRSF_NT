@@ -16,8 +16,7 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = deparse(list("README.txt", "caribouRSF_NT.Rmd")),
   reqdPkgs = list("data.table", "ggplot2", "PredictiveEcology/pemisc", 
-                  "tati-micheletti/usefulFuns", "magrittr", "raster",
-                  "PredictiveEcology/fireSenseUtils@V.2.0_NWT", "tictoc"),
+                  "magrittr", "raster", "testthat", "SpaDES.tools", "tictoc"),
   parameters = rbind(
     defineParameter("predictLastYear", "logical", TRUE, NA, NA, 
                     paste0("If last year of simulation is not multiple of",
