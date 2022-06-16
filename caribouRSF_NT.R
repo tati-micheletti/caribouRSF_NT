@@ -338,11 +338,16 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
         sim$predictedPresenceProbability[[paste0("Year", time(sim))]] <- RSFModel(coeffTablAndValues = sim$coeffTablAndValues,
                                                                                   modLayers = sim$caribouLayers[[paste0("Year", time(sim))]],
                                                                                   currentTime = time(sim),
+                                                                                  runName = sim[["runName"]],
                                                                                   pathData = dataPath(sim),
                                                                                   binningTable = sim$binningTable,
-                                                                                  pathOut = outputPath(sim),
-                                                                                  shp = caribouArea2,
-                                                                                  cropRSFToShp = P(sim)$cropRSFToShp)
+                                                                                  pathOut = checkPath(
+                                                                                    file.path(outputPath(sim), 
+                                                                                              "predictions"), 
+                                                                                    create = TRUE),
+                                                                                  makeMap = P(sim)$makeMap,
+                                                                                  shp = sim$NT1shapefile,
+                                                                                  cropRSFToShp = P(sim)$shpToCropTo)
       # schedule future event(s)
       sim <- scheduleEvent(sim, time(sim) + P(sim)$predictionInterval, "caribouRSF_NT", "calculatingRSF")
       if (P(sim)$predictLastYear){
