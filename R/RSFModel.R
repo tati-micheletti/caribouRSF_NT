@@ -2,11 +2,12 @@ RSFModel <- function(coeffTablAndValues,
                      modLayers,
                      currentTime,
                      pathData,
-                     runName,
                      binningTable,
+                     runName,
                      pathOut,
+                     makeMap = FALSE,
                      shp,
-                     cropRSFToShp = TRUE){
+                     cropRSFToShp){
 
   message("Forecasting caribou habitat from RSF ...")
     modsPred <- lapply(X = names(coeffTablAndValues), FUN = function(modelType) {
@@ -21,9 +22,10 @@ predAndUncertain <- generateRSFRas(modelType = modelType,
                             templateRas = modLayers[[1]], 
                             currentTime = currentTime, 
                             responseTable = responseList,
-                            binningTable = binningTable,
                             runName = runName,
+                            binningTable = binningTable,
                             shp = shp,
+                            makeMap = makeMap,
                             cropToShp = cropRSFToShp,
                             rasName = c("relativeSelection", 
                                         "relativeSelectionUncertain"),
