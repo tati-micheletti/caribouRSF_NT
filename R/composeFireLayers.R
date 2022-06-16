@@ -7,6 +7,7 @@ composeFireLayers <- function(currentTime,
                               cohortData = NULL,
                               pixelGroupMap = NULL,
                               decidousSp,
+                              runName,
                               makeAssertions = TRUE,
                               simulationProcess,
                               landClasses = c("Lowlands", "UplandsNonTreed",
@@ -33,43 +34,59 @@ composeFireLayers <- function(currentTime,
                               thisYearsFires,
                               rstLCC){
   
-  firesFilenameRas <- file.path(pathData, "historicalFireRaster.tif")
-  firesFilenameList <- file.path(pathData, "historicalFireList.qs")
-  
-  # Currently, the function will implement the current fires from the simulation. 
+  firesFilenameRas <- file.path(pathData, paste0(runName,
+                                                 "_historicalFireRaster.tif"))
+  firesFilenameList <- file.path(pathData, paste0(runName,
+                                                  "_historicalFireList.qs"))
+  # Currently, the function will implement the current fires from the simulation.
   if (is.null(fireLayers)){ # This is for the first year, to create the fire layers
     if (!file.exists(firesFilenameRas)){
       if (!file.exists(firesFilenameList)){
-      fireRas <- rstLCC
-      fireRas[!is.na(fireRas)] <- 0
-      tsRas <- lapply(unique(historicalFires$fireYear), function(YYYY){
-        message(paste0("Fires for year ", YYYY, " being processed..."))
-        subst <- historicalFires[historicalFires$fireYear == YYYY, ]
-        if (!length(subst) == 0){
-          substSF <- sf::st_as_sf(subst)
-          yearFire <- suppressWarnings(fasterize::fasterize(sf = substSF, 
-                                                            raster = rstLCC, 
-                                                            field = "fireYear"))
-          fireRas[yearFire == YYYY] <- YYYY
+        fireRas <- rstLCC
+        fireRas[!is.na(fireRas)] <- 0
+        if (!is.na(historicalFires)){ 
+          # This is done to deal with situations where there are no fires in the
+          # study area so it doesn't fail downstream 
+          tsRas <- lapply(unique(historicalFires$fireYear), function(YYYY){
+            message(paste0("Fires for year ", YYYY, " being processed..."))
+            subst <- historicalFires[historicalFires$fireYear == YYYY, ]
+            if (!length(subst) == 0){
+              substSF <- sf::st_as_sf(subst)
+              if (as.character(raster::crs(substSF)) != as.character(raster::crs(rstLCC))){
+                warning("study area and RTM CRS do not match. Rprojecting study area", 
+                        immediate. = TRUE)
+                substSF <- projectInputs(x = substSF, targetCRS = raster::crs(rstLCC))
+              }
+              yearFire <- suppressWarnings(fasterize::fasterize(sf = substSF, 
+                                                                raster = rstLCC, 
+                                                                field = "fireYear"))
+              fireRas[yearFire == YYYY] <- YYYY
+            }
+            return(fireRas)
+          })
+          names(tsRas) <- paste0("Year", unique(historicalFires$fireYear))
+          tsRas <- lapply(names(tsRas), function(r){
+            ras <- tsRas[[r]]
+            names(ras) <- paste0("historicalFires", r)
+            return(ras)
+          })
+          names(tsRas) <- paste0("Year", unique(historicalFires$fireYear))
+        } else {
+          tsRas <- fireRas
+          names(tsRas) <- paste0("Year", currentTime)
         }
-        return(fireRas)
-      })
-      names(tsRas) <- paste0("Year", unique(historicalFires$fireYear))
-      tsRas <- lapply(names(tsRas), function(r){
-        ras <- tsRas[[r]]
-        names(ras) <- paste0("historicalFires", r)
-        return(ras)
-      })
-      names(tsRas) <- paste0("Year", unique(historicalFires$fireYear))
-      qs::qsave(tsRas, file = firesFilenameList)
-    } else {
-      tsRas <- qs::qread(firesFilenameList)
-    }
-    # This is the first year. I need to create one historical raster of burns with years as counters
-    # Place the maximum year of the list in the pixel
-    counterRaster <- raster::calc(raster::stack(tsRas), fun = max, na.rm = TRUE)
-    names(counterRaster) <- tools::file_path_sans_ext(basename(firesFilenameRas))
-    writeRaster(counterRaster, firesFilenameRas, format = "GTiff")
+        qs::qsave(tsRas, file = firesFilenameList)
+      } else {
+        tsRas <- qs::qread(firesFilenameList)
+      }
+      # This is the first year. I need to create one historical raster of burns with years as counters
+      # Place the maximum year of the list in the pixel
+      counterRaster <- raster::stack(tsRas)
+      if (nlayers(counterRaster) > 1){
+        counterRaster <- raster::calc(counterRaster, fun = max, na.rm = TRUE)
+      }
+      names(counterRaster) <- tools::file_path_sans_ext(basename(firesFilenameRas))
+      writeRaster(counterRaster, firesFilenameRas, format = "GTiff")
     } else {
       counterRaster <- raster::raster(firesFilenameRas)
     }
@@ -90,23 +107,23 @@ composeFireLayers <- function(currentTime,
     minYear <- 1+(currentTime - max(yearClasses))
     maxYearFromData <- maxValue(counterRaster)
     # 2. Get years we don't have from data from simulation
-    # This needs to happen only if we actually need the thisYearsFires (i.e. simulation)
+    # This should only happen if we actually need the thisYearsFires (i.e. simulation)
     # If we are performing only one year (i.e. updating RSF or running the 2017 comparison)
     # we don't need the simulated fires
     if (!is.null(thisYearsFires)){
-      subThisYears <- raster::stack(lapply(maxYearFromData:currentTime, function(Y){
-        y <- thisYearsFires[[grep(Y, names(thisYearsFires))]]
-        y[y > 0] <- Y
-        names(y) <- paste0("Year", Y)
-        y <- postProcess(y, 
-                         rasterToMatch = rstLCC, 
-                         destinationPath = pathData)
-        return(y)
-      }))
+    subThisYears <- raster::stack(lapply(maxYearFromData:currentTime, function(Y){
+      y <- thisYearsFires[[grep(Y, names(thisYearsFires))]]
+      y[y > 0] <- Y
+      names(y) <- paste0("Year", Y)
+      y <- postProcess(y, 
+                       rasterToMatch = rstLCC, 
+                       destinationPath = pathData)
+      return(y)
+    }))
     } else {
       subThisYears <- NULL
     }
-
+    
     # 3. Add the new years
     counterRaster <- raster::calc(raster::stack(counterRaster, 
                                                 subThisYears), 
@@ -144,7 +161,7 @@ composeFireLayers <- function(currentTime,
     thisClassPixels <- raster(counterRaster)
     thisClassPixels[counterRasterThisClass[] == 1 & currRas[] == 1] <- 1
     names(thisClassPixels) <- paste0("burned", paste0(allClasses$landClasses[rowIndex], 
-                                                  allClasses$yearClasses[rowIndex]), "y")
+                                                      allClasses$yearClasses[rowIndex]), "y")
     return(thisClassPixels)
   })
   names(burnedLayers) <- paste0("burned", paste0(allClasses$landClasses,
@@ -162,9 +179,15 @@ composeFireLayers <- function(currentTime,
                                                           basename(tempfile(pattern = "")))),
                               overwrite = TRUE, format = "GTiff")
     pixelsSum[] <- pixelsSum[]
-    testthat::expect_true(all.equal(sort(unique(pixelsSum[])), c(0, 1)), 
-                          label = "Fire layers were not correctly built. Please debug. 
+    if (is.na(historicalFires)) {
+      testthat::expect_true(all.equal(sort(unique(pixelsSum[])), 0), 
+                            label = "Fire layers were not correctly built. Please debug. 
                           Sum of layers == 1 ")
+    } else {
+      testthat::expect_true(all.equal(sort(unique(pixelsSum[])), c(0, 1)), 
+                            label = "Fire layers were not correctly built. Please debug. 
+                          Sum of layers == 1 ")
+    }
     message("Verification complete! Layers were correctly built.")
   }
   return(burnedLayers)
