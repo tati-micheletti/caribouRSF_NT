@@ -313,13 +313,17 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
             stop("Something went wrong when bringing rasters to memory to save. Please debug.")
           
           ###### End assertion
+          layersName <- file.path(outputPath(sim), paste0("caribouLayers_year", 
+                                                          time(sim),
+                                                          "_", runName, ".tif"))
           
           writeRaster(sim$caribouLayers[[paste0("Year", time(sim))]], 
-                      filename = file.path(outputPath(sim), paste0("caribouLayers_year", 
-                                                                   time(sim))))
+                      filename = layersName,
+                      format = "GTiff",
+                      overwrite = TRUE)
+          
           message(crayon::green(paste0("Caribou layers successfully saved as: ", 
-                                       file.path(outputPath(sim), paste0("caribouLayers_year", 
-                                                                         time(sim))))))
+                                       layersName)))
         }
           
       # schedule future event(s)
