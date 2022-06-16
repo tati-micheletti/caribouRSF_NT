@@ -10,7 +10,7 @@ defineModule(sim, list(
                                 email = "tati.micheletti@gmail.com", comment = NULL)), 
                       class = "person"),
   childModules = character(0),
-  version = list(SpaDES.core = "1.0.1", caribouRSF_NT = "0.0.0.9000"),
+  version = list(SpaDES.core = "1.0.1", caribouRSF_NT = "0.0.1.0"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
