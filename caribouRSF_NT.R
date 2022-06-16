@@ -189,9 +189,9 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                                        nBootstrap = P(sim)$nBootstrap)
     },
     gettingData = {
-      mod$cohortData <- usefulFuns::createModObject(data = "cohortData", sim = sim, 
+      mod$cohortData <- createModObject(data = "cohortData", sim = sim, 
                                                     pathInput = inputPath(sim), currentTime = time(sim))
-      mod$pixelGroupMap <- usefulFuns::createModObject(data = "pixelGroupMap", sim = sim, 
+      mod$pixelGroupMap <- createModObject(data = "pixelGroupMap", sim = sim, 
                                                        pathInput = inputPath(sim), currentTime = time(sim))
       
       if (any(is.null(mod$pixelGroupMap), is.null(mod$cohortData))) {
