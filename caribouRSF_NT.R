@@ -87,13 +87,13 @@ defineModule(sim, list(
                  desc = "Caribou coefficients from the NT1 caribou model (DeMars et al., 2019)", 
                  sourceURL = "https://drive.google.com/file/d/1Q_OCXre7ksVwMauFvp-80LSb7xtOVNQ7"),
     expectsInput(objectName = "rstLCC", objectClass = "RasterLayer", 
-                 desc = paste0("This will give is all 'fixedLayers' except for",
+                 desc = paste0("This will give us all 'fixedLayers' except for",
                                " water and anthropogenic layers (see next 2 inputs)"), 
                  sourceURL = ""),
     expectsInput(objectName = "caribouLCC", objectClass = "RasterLayer", 
                  desc = paste0("If a specific landcover class layer is to be used with 
                                the caribou module, you pass it here. 
-                               This will give is all 'fixedLayers' except for",
+                               This will give us all 'fixedLayers' except for",
                                " water and anthropogenic layers (see next 2 inputs)"), 
                  sourceURL = ""),
     expectsInput(objectName = "anthropogenicLayers", objectClass = "RasterLayer", 
