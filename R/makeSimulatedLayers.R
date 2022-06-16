@@ -18,6 +18,7 @@ makeSimulatedLayers <- function(fixedLayers,
   #     Define the pixels that have not been burned in the last 60 years and use 
   #     them for this
   # 1A. Remove all fired pixels of the last 60 years
+  message("Starting makeSimulayedLayers...")
   pixelsToClassify <- rstLCC
   pixelsToClassify[!is.na(pixelsToClassify)] <- 1
   allCurrentlyBurnedPixels <- raster::calc(fireLayers, fun = sum, na.rm = TRUE, 
@@ -80,7 +81,7 @@ makeSimulatedLayers <- function(fixedLayers,
                               overwrite = TRUE, format = "GTiff")
     pixelsSum[] <- pixelsSum[]
     testthat::expect_true(all.equal(sort(unique(pixelsSum[])), c(0, 1)),
-                          label = "S layers were not correctly built. Please debug. 
+                          label = "Simulated layers were not correctly built. Please debug. 
                           Sum of layers == 1 ")
     message("Verification complete! Layers were correctly built.")
   }
@@ -89,6 +90,7 @@ makeSimulatedLayers <- function(fixedLayers,
   # I need to calculate the denominator matrix to avoid study area border effects
   # This will return a raster with the number of pixels available in the neighborhood
   # of each pixel
+  message("Calculating proportions...")
   denominatorRaster <- raster::focal(x = rasterToMatch, w = focalMatrix, 
                                      fun = sum, na.rm = TRUE)
   # Broadleaf 1km proportion
