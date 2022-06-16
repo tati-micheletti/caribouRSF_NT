@@ -256,6 +256,7 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                             ), 
                                             # "UplandsConifer" & "UplandsBroadleaf" come from biomass!
                                             thisYearsFires = sim$rstCurrentBurnList,
+                                            runName = sim[["runName"]],
                                             rstLCC = currRstLCC,
                                             makeAssertions = P(sim)$makeAssertions) # Needs for the 4 types of fires
         # Get the "fixed" layers: 
