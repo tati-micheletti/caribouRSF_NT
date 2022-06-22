@@ -1,14 +1,12 @@
 defineModule(sim, list(
   name = "caribouRSF_NT",
-  description = paste0("This is a module that implements the Boreal Caribou",
-                       " Resource Selection Function model developed by ",
-                       "DeMars et al., 2019 for the ",
-                       "Northwest Territories in Canada"),
+  description = paste("This is a module that implements the Boreal Caribou",
+                      "Resource Selection Function model developed by",
+                      "DeMars et al. (2019) for the Northwest Territories in Canada."),
   keywords = c("Caribou", "RSF"),
-  authors = structure(list(list(given = "Tati", 
-                                family = "Micheletti", role = c("aut", "cre"), 
-                                email = "tati.micheletti@gmail.com", comment = NULL)), 
-                      class = "person"),
+  authors = c(
+    person("Tati", "Micheletti", email = "tati.micheletti@gmail.com", role = c("aut", "cre"))
+  ),
   childModules = character(0),
   version = list(SpaDES.core = "1.0.1", caribouRSF_NT = "0.0.1.0"),
   timeframe = as.POSIXlt(c(NA, NA)),
