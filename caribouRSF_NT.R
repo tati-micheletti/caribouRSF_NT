@@ -8,11 +8,11 @@ defineModule(sim, list(
     person("Tati", "Micheletti", email = "tati.micheletti@gmail.com", role = c("aut", "cre"))
   ),
   childModules = character(0),
-  version = list(SpaDES.core = "1.0.1", caribouRSF_NT = "0.0.1.0"),
+  version = list(caribouRSF_NT = "0.0.1.0"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
-  documentation = deparse(list("README.txt", "caribouRSF_NT.Rmd")),
+  documentation = deparse(list("README.md", "caribouRSF_NT.Rmd")),
   reqdPkgs = list("data.table", "ggplot2", "PredictiveEcology/pemisc", 
                   "magrittr", "raster", "testthat", "SpaDES.tools", "tictoc"),
   parameters = rbind(
