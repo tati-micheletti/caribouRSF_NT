@@ -23,7 +23,7 @@
 #' @importFrom SpaDES.core paddedFloatToChar
 #' @rdname createModObject
 
-createModObject <- function(data, sim = NULL, pathInput, currentTime, fun = readRDS){
+createModObject <- function(data, sim = NULL, pathInput, currentTime, FUN = readRDS){
   if (all(is.null(sim), is.null(pathInput)))
     stop("Either a simList or a folder containing the data need to be supplied")
   dt <- NULL
@@ -38,12 +38,19 @@ createModObject <- function(data, sim = NULL, pathInput, currentTime, fun = read
     if (class(currentTime) != "numeric")
       stop("Current time needs to be numeric!")
     dataName <- grepMulti(x = list.files(pathInput,
-                                         recursive = TRUE),
-                          patterns = c(data, SpaDES.core::paddedFloatToChar(currentTime, padL = 3)))
+                                         recursive = TRUE, ),
+                          patterns = c(data,
+                                       SpaDES.core::paddedFloatToChar(currentTime,
+                                                                      padL = 3)))
+    auxFile <- dataName[grepl(x = file_ext(dataName), pattern = "xml")]
+    if (length(auxFile) != 0){
+      # Cleanup the aux file
+      dataName <- dataName[!grepl(x = file_ext(dataName), pattern = "xml")]
+    }
     if (length(dataName) == 0){
       dt <- NULL
     } else {
-      dt <- do.call(what = fun, args = list(file.path(pathInput, dataName)))
+      dt <- do.call(what = FUN, args = list(file.path(pathInput, dataName)))
     }
     if (!is.null(dt))
       message(paste0(data, " loaded from " ,
