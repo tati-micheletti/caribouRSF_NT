@@ -7,14 +7,15 @@ generateRSFRas <- function(modelType,
                            pathOut,
                            binningTable,
                            shp,
-                           cropToShp = TRUE){
+                           makeMap = FALSE,
+                           cropToShp){
 
   DT <- data.table(RSF = responseTable$RSF,
                    RSFsd = responseTable$sdRSF,
                    pixelID = responseTable$pixelID)
 
-  if (cropToShp){
-    shpSF <- sf::st_as_sf(shp)
+  if (!is.null(cropToShp)){
+    shpSF <- sf::st_as_sf(cropToShp)
     shpSF$ID <- 1
     shpRas <- fasterize::fasterize(sf = shpSF, 
                                    raster = raster(templateRas), 
@@ -57,85 +58,81 @@ generateRSFRas <- function(modelType,
     names(ras) <- paste0(rasName[r], modelType, "_Year", currentTime)
     ras[] <- ras[]
     
-    # Do the binning using the binning table
-    ######### 
-    # Old binning way
-    # RSFbinned <- ggplot2::cut_number(x = ras[], n = 10, label = FALSE)
-    # rasBinned <- raster::setValues(raster(ras), RSFbinned)
-    # #####
-if (names(ras) == "relativeSelection"){
-  reclassMatrix <- matrix(cbind(binningTable[["Min.Value"]],
-                                binningTable[["Max.Value"]],
-                                binningTable[["RSF.Bin"]]), 
-                          ncol = 3)
-  # Make sure that the max value is infinite, so it accommodates any bigger value
-  # than before
-  reclassMatrix[nrow(reclassMatrix), 2] <- Inf
-  rasBinned <- raster::reclassify(x = ras, rcl = reclassMatrix)
-} else {
-  RSFbinned <- ggplot2::cut_number(x = ras[], n = 10, label = FALSE)
-  rasBinned <- raster::setValues(raster(ras), RSFbinned)
-}
     writeRaster(x = ras, 
                 filename = file.path(pathOut, 
                                      paste0(runName, "_", rasName[r], modelType, 
                                             "_Year", currentTime)),
                 format = "GTiff", overwrite = TRUE)
-    
-    pngPath <- file.path(pathOut, paste0(rasName[r], modelType,
-                                         "_Year", currentTime, ".png"))
-    library("lattice")
-    library("rasterVis")
-    library("viridis")
-    library("maptools")
-    png(filename = pngPath,
-        width = 21, height = 29,
-        units = "cm", res = 300)
-    
-    pathSHP <- file.path(Paths$inputPath, "RSFshp.shp")
-    if (!file.exists(pathSHP)){
-      rgdal::writeOGR(obj = shp, dsn = Paths$inputPath, "RSFshp", 
-                      driver = "ESRI Shapefile")
+    if (makeMap){
+      if (!grepl(pattern = "Uncertain", x = names(ras))){
+        reclassMatrix <- matrix(cbind(binningTable[["Min.Value"]],
+                                      binningTable[["Max.Value"]],
+                                      binningTable[["RSF.Bin"]]), 
+                                ncol = 3)
+        # Make sure that the max value is infinite, so it accommodates any bigger value
+        # than before
+        reclassMatrix[nrow(reclassMatrix), 2] <- Inf
+        rasBinned <- raster::reclassify(x = ras, rcl = reclassMatrix)
+        print("RSF relative selection map built!")
+      } else {
+        RSFbinned <- ggplot2::cut_number(x = ras[], n = 10, label = FALSE)
+        rasBinned <- raster::setValues(raster(ras), RSFbinned)
+        print("RSF relative selection uncertainty map built!")
+      }
+      pngPath <- file.path(pathOut, paste0(runName, "_", rasName[r], modelType,
+                                           "_Year", currentTime, ".png"))
+      library("lattice")
+      library("rasterVis")
+      library("viridis")
+      library("maptools")
+      png(filename = pngPath,
+          width = 21, height = 29,
+          units = "cm", res = 300)
+      
+      pathSHP <- file.path(Paths$inputPath, "RSFshp.shp")
+      if (!file.exists(pathSHP)){
+        rgdal::writeOGR(obj = shp, dsn = Paths$inputPath, "RSFshp", 
+                        driver = "ESRI Shapefile")
+      }
+      shpLoaded <- maptools::readShapeLines(pathSHP)
+      shpProj <- raster::crs(shp)
+      
+      # Add shp to levelplot
+      if (rasName[r] == "relativeSelection"){
+        Pal <- pal
+        rasBinned <- ratify(rasBinned) 
+        att <- "ID"
+      } else {
+        Pal <- viridis_pal(option = "D")(10) 
+        att <- NULL
+      }
+      print(rasterVis::levelplot(rasBinned,
+                                 sub = paste0("Caribou RSF in ", currentTime),
+                                 att = att,
+                                 margin = FALSE,
+                                 maxpixels = 6e6,
+                                 colorkey = list(
+                                   space = 'bottom',
+                                   at = 1:10,
+                                   axis.line = list(col = 'black'),
+                                   width = 0.75
+                                 ),
+                                 par.settings = list(
+                                   strip.border = list(col = 'transparent'),
+                                   strip.background = list(col = 'transparent'),
+                                   axis.line = list(col = 'transparent')),
+                                 scales = list(draw = FALSE),
+                                 col.regions = Pal, #pals::kovesi.rainbow(nlev), #viridis_pal(option = "D")(nlev),
+                                 par.strip.text = list(cex = 0.8,
+                                                       lines = 1,
+                                                       col = "black"),
+                                 panel = function(...){
+                                   lattice::panel.levelplot.raster(...)
+                                   sp::sp.polygons(shpLoaded, fill = 'black', lwd = 1)
+                                 }))
+      
+      dev.off()
     }
-    shpLoaded <- maptools::readShapeLines(pathSHP)
-    shpProj <- raster::crs(shp)
-
-    # Add shp to levelplot
-   if (rasName[r] == "relativeSelection"){
-     Pal <- pal
-     rasBinned <- ratify(rasBinned) 
-     att <- "ID"
-   } else {
-     Pal <- viridis_pal(option = "D")(10) 
-     att <- NULL
-   }
-   print(rasterVis::levelplot(rasBinned,
-              sub = paste0("Caribou RSF in ", currentTime),
-              att = att,
-              margin = FALSE,
-              maxpixels = 6e6,
-              colorkey = list(
-                space = 'bottom',
-                at = 1:10,
-                axis.line = list(col = 'black'),
-                width = 0.75
-              ),
-              par.settings = list(
-                strip.border = list(col = 'transparent'),
-                strip.background = list(col = 'transparent'),
-                axis.line = list(col = 'transparent')),
-              scales = list(draw = FALSE),
-              col.regions = Pal, #pals::kovesi.rainbow(nlev), #viridis_pal(option = "D")(nlev),
-              par.strip.text = list(cex = 0.8,
-                                    lines = 1,
-                                    col = "black"),
-              panel = function(...){
-                lattice::panel.levelplot.raster(...)
-                sp::sp.polygons(shpLoaded, fill = 'black', lwd = 1)
-              }))
-   
-    dev.off()
-    
     return(ras)
   })
   names(rasList) <- rasName

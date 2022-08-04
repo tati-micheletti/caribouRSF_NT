@@ -1,26 +1,35 @@
 defineModule(sim, list(
   name = "caribouRSF_NT",
-  description = paste0("This is a module that implements the Boreal Caribou",
-                       " Resource Selection Function model developed by ",
-                       "DeMars et al., 2019 for the ",
-                       "Northwest Territories in Canada"),
+  description = paste("This is a module that implements the Boreal Caribou",
+                      "Resource Selection Function model developed by",
+                      "DeMars et al. (2019) for the Northwest Territories in Canada."),
   keywords = c("Caribou", "RSF"),
   authors = c(
     person("Tati", "Micheletti", email = "tati.micheletti@gmail.com", role = c("aut", "cre"))
   ),
   childModules = character(0),
-  version = list(SpaDES.core = "1.0.1", caribouRSF_NT = "0.0.0.9000"),
+  version = list(caribouRSF_NT = "0.0.1.0"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
-  documentation = deparse(list("README.txt", "caribouRSF_NT.Rmd")),
-  reqdPkgs = list("data.table", "ggplot2", "PredictiveEcology/pemisc",
-                  "tati-micheletti/usefulFuns", "magrittr", "raster",
-                  "PredictiveEcology/fireSenseUtils@V.2.0_NWT", "tictoc"),
+  documentation = deparse(list("README.md", "caribouRSF_NT.Rmd")),
+  reqdPkgs = list("data.table", "ggplot2", "PredictiveEcology/pemisc", 
+                  "magrittr", "raster", "testthat", "SpaDES.tools", "tictoc"),
   parameters = rbind(
+    defineParameter("cropAllRasToSA", "logical", TRUE, NA, NA,
+                    paste0("Some rasters might be covering different areas (i.e., ",
+                           " when landscape rasters are larger due to fire ",
+                           "processes and still named rasterToMatch).",
+                           " This parameter ensures all align without compromising ",
+                           "the RTM (i.e., by using it in mod). This helps voiding ",
+                           "situations with fires being generated in water.")),
     defineParameter("predictLastYear", "logical", TRUE, NA, NA,
                     paste0("If last year of simulation is not multiple of",
                            " predictionInterval, should it predict for the last year too?")),
+    defineParameter("makeMap", "logical", FALSE, NA, NA, paste0("Should the module",
+                                                                "produce a figure map?",
+                                                                "Set to TRUE only if the ",
+                                                                "whole study area is being run")),
     defineParameter("rowOfFixedLayers", "numeric", 8, NA, NA,
                     paste0("This is the number of rows from the classTable which contain",
                            " fixed covariates (i.e. water, shrub, herbs, etc.)",
@@ -39,14 +48,11 @@ defineModule(sim, list(
     defineParameter(name = "baseLayer", class = "numeric", default = 2005, min = NA, max = NA,
                     desc = "Which layer should be used? LCC05 or LCC10?"),
     defineParameter(name = "decidousSp", class = "character",
-                    default = c("Betu_Pap", "Popu_Tre", "Popu_Bal"),
+                    default = c("Betu_pap", "Popu_tre", "Popu_bal"),
                     min = NA, max = NA, desc = "Deciduous species to be considered for caribou"),
     defineParameter(".useCache", "character", ".inputObjects", NA, NA,
                     desc = paste0("Internal. Can be names of events or the whole module ",
                                   "name; these will be cached by SpaDES")),
-    defineParameter("cropRSFToShp", "logical", "FALSE", NA, NA,
-                    desc = paste0("Should the RSF be cropped to a smaller extent? ",
-                                  "If TRUE, shp in RSFmModel HAS to be provided")),
     defineParameter("yearsToSaveCaribouLayers", "numeric", NA, NA, NA,
                     desc = paste0("In which years should the simulation save the layers used ",
                                   " to generate the caribou RSF predictions? Defaults to NA, no saving")),
@@ -61,6 +67,9 @@ defineModule(sim, list(
   inputObjects = bindrows(
     expectsInput(objectName = "waterRaster", objectClass = "RasterLayer",
                  desc = "Wetland raster for excluding water from anthropogenic layer",
+                 sourceURL = NA),
+    expectsInput(objectName = "shpToCropTo", objectClass = "SpatialPolygonDataFrame",
+                 desc = "If final RSF map should be cropped to a shapefile, this is the one",
                  sourceURL = NA),
     expectsInput(objectName = "classTable", objectClass = "data.table",
                  desc = paste0("Two-column classification table for covariate/class. When providing this ",
@@ -83,13 +92,13 @@ defineModule(sim, list(
                  desc = "Caribou coefficients from the NT1 caribou model (DeMars et al., 2019)",
                  sourceURL = "https://drive.google.com/file/d/1Q_OCXre7ksVwMauFvp-80LSb7xtOVNQ7"),
     expectsInput(objectName = "rstLCC", objectClass = "RasterLayer",
-                 desc = paste0("This will give is all 'fixedLayers' except for",
+                 desc = paste0("This will give us all 'fixedLayers' except for",
                                " water and anthropogenic layers (see next 2 inputs)"),
                  sourceURL = ""),
     expectsInput(objectName = "caribouLCC", objectClass = "RasterLayer",
                  desc = paste0("If a specific landcover class layer is to be used with
                                the caribou module, you pass it here.
-                               This will give is all 'fixedLayers' except for",
+                               This will give us all 'fixedLayers' except for",
                                " water and anthropogenic layers (see next 2 inputs)"),
                  sourceURL = ""),
     expectsInput(objectName = "anthropogenicLayers", objectClass = "RasterLayer",
@@ -98,7 +107,7 @@ defineModule(sim, list(
                          Distance to polygonal disturbance,
                          Distance to settlement with the corresponding exponential equations (see
                  DeMars, Hodson, et al 2019 for details)",
-                 sourceURL = "https://drive.google.com/file/d/1A4BBYFDAzllpPFyj29cM0MC6nF9A6-kv/"),
+                 sourceURL = "https://drive.google.com/file/d/1npwXsabARoLeGKNKhdC_7j-OJSKCOJdC/view?usp=sharing"),
     expectsInput(objectName = "fixedLayers", objectClass = "character",
                  desc = "Fixed layers for the Caribou RSF model, currently:
                          water,
@@ -136,8 +145,8 @@ defineModule(sim, list(
     expectsInput(objectName = "rasterToMatch", objectClass = "RasterLayer",
                  desc = "All spatial outputs will be reprojected and resampled to it",
                  sourceURL = "https://drive.google.com/open?id=1fo08FMACr_aTV03lteQ7KsaoN9xGx1Df"),
-    expectsInput(objectName = "historicalFires", objectClass = "list",
-                 desc = "List for fire by year. This layer was built by James Hodson (GNWT)",
+    expectsInput(objectName = "historicalFiresAll", objectClass = "list",
+                 desc = paste0("List for fire by year. There is a layer available for the NWT built by James Hodson (GNWT)"),
                  sourceURL = "https://drive.google.com/file/d/1WPfNrB-nOejOnIMcHFImvnbouNFAHFv7"),
     expectsInput(objectName = "rstCurrentBurnList", objectClass = "list",
                  desc = "List of fires by year (raster format). These layers are produced by simulation",
@@ -146,7 +155,10 @@ defineModule(sim, list(
                  desc = "Original binning table from DeMars et al., 2019 (Updated in JAN2021 after bugfix)",
                  sourceURL = "https://drive.google.com/file/d/1KXNlCN9iBLcPBcEge469fU9Kvws2trAc"),
     expectsInput(objectName = "runName", objectClass = "character",
-                 desc = "runName relates to the area ran for the simulation. Defaults is to stop without it",
+                 desc = paste0("runName relates to the area ran for the simulation.",
+                               " Defaults is to stop without it. ",
+                               "If simulationProcess == 'dynamic', this should ",
+                               "be equivalent to a column in the sppEquiv table"),
                  sourceURL = NA),
     expectsInput(objectName = "sppEquiv", objectClass = "data.table",
                  desc = "table of species equivalencies. See LandR::sppEquivalencies_CA.",
@@ -169,11 +181,33 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
   switch(
     eventType,
     init = {
+
+      mod$rasterToMatch <- sim$rasterToMatch
+      if (P(sim)$cropAllRasToSA){
+        # RTM
+        mod$rasterToMatch <- maskInputs(x = mod$rasterToMatch,
+                                        studyArea = sim$studyArea)
+        mod$rasterToMatch[sim$waterRaster[] == 1] <- NA
+        # Anthropogenic layers
+        Nms <- names(sim$anthropogenicLayers) # For some reason, it is losing the
+        # Layers names.
+        sim$anthropogenicLayers <- maskInputs(x = sim$anthropogenicLayers,
+                                              studyArea = sim$studyArea)
+        sim$anthropogenicLayers[is.na(mod$rasterToMatch[])] <- NA
+        sim$anthropogenicLayers[sim$waterRaster[] == 1] <- NA
+        names(sim$anthropogenicLayers) <- Nms
+        # Caribou LCC rstLCC
+        sim$rstLCC <- maskInputs(x = sim$rstLCC,
+                                              studyArea = sim$studyArea)
+        sim$rstLCC[is.na(mod$rasterToMatch[])] <- NA
+        sim$rstLCC[sim$waterRaster[] == 1] <- NA
+      }
       sim <- scheduleEvent(sim, start(sim), "caribouRSF_NT", "makingModel")
       sim <- scheduleEvent(sim, start(sim), "caribouRSF_NT", "gettingData")
       sim <- scheduleEvent(sim, start(sim), "caribouRSF_NT", "preparingLayers")
       sim <- scheduleEvent(sim, start(sim), "caribouRSF_NT", "calculatingRSF")
-      sim <- scheduleEvent(sim, P(sim)$plotTime, "caribouRSF_NT", "plot", eventPriority = .last())
+      if (!is.null(P(sim)$plotTime))
+        sim <- scheduleEvent(sim, P(sim)$plotTime, "caribouRSF_NT", "plot", eventPriority = .last())
       #P(sim)$.plotInitialTime
     },
     makingModel = {
@@ -182,10 +216,12 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                                        nBootstrap = P(sim)$nBootstrap)
     },
     gettingData = {
-      mod$cohortData <- usefulFuns::createModObject(data = "cohortData", sim = sim,
-                                                    pathInput = inputPath(sim), currentTime = time(sim))
-      mod$pixelGroupMap <- usefulFuns::createModObject(data = "pixelGroupMap", sim = sim,
-                                                       pathInput = inputPath(sim), currentTime = time(sim))
+      mod$cohortData <- createModObject(data = "cohortData", sim = sim,
+                                                    pathInput = inputPath(sim),
+                                        currentTime = time(sim), FUN = qs::qread)
+      mod$pixelGroupMap <- createModObject(data = "pixelGroupMap", sim = sim,
+                                                       pathInput = inputPath(sim),
+                                           currentTime = time(sim), FUN = raster::raster)
 
       if (any(is.null(mod$pixelGroupMap), is.null(mod$cohortData))) {
         warning(paste0("Vegetation layers not found for year ", time(sim),
@@ -211,7 +247,6 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                                            2,11,11,
                                                            3,13,13)), # HARDCODED TO MATCH LCC05
                                             deciduousCoverDiscount = P(sim)$deciduousCoverDiscount,
-                                            species = sim[["sppEquiv"]][[sim[["runName"]]]],
                                             leadingSpThreshold = P(sim)$leadingSpThreshold,
                                             decidousSp = P(sim)$decidousSp,
                                             rstLCC = sim$rstLCC) # This raster needs to be already the land cover raster
@@ -220,9 +255,8 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
         currRstLCC <- sim$caribouLCC
       }
         sim$fireLayers <- composeFireLayers(currentTime = time(sim),
-                                            historicalFires = sim$historicalFires,
+                                            historicalFires = sim$historicalFiresAll,
                                             pathData = dataPath(sim),
-                                            species = sim[["sppEquiv"]][[sim[["runName"]]]],
                                             fireLayers = sim$fireLayers,
                                             cohortData = mod$cohortData,
                                             pixelGroupMap = mod$pixelGroupMap,
@@ -249,6 +283,7 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                             ),
                                             # "UplandsConifer" & "UplandsBroadleaf" come from biomass!
                                             thisYearsFires = sim$rstCurrentBurnList,
+                                            runName = sim[["runName"]],
                                             rstLCC = currRstLCC,
                                             makeAssertions = P(sim)$makeAssertions) # Needs for the 4 types of fires
         # Get the "fixed" layers:
@@ -268,12 +303,11 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                                pixelGroupMap = mod$pixelGroupMap,
                                                simulationProcess = P(sim)$simulationProcess,
                                                rstLCC = currRstLCC,
-                                               rasterToMatch = sim$rasterToMatch,
+                                               rasterToMatch = mod$rasterToMatch,
                                                decidousSp = P(sim)$decidousSp,
                                                currentTime = time(sim),
-                                               historicalFires = sim$historicalFires,
+                                               historicalFires = sim$historicalFiresAll,
                                                pathData = dataPath(sim),
-                                               species = sim[["sppEquiv"]][[sim[["runName"]]]],
                                                makeAssertions = P(sim)$makeAssertions) #TODO remove "hardcoded" spEquiv
 
         # Put all layers together
@@ -281,7 +315,6 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
                                                                     sim$fixedLayers,
                                                                     sim$simulLayers,
                                                                     sim$anthropogenicLayers)
-
         # Check all layers have the corresponding names in the model
         testthat::expect_true(all(names(sim$caribouLayers[[paste0("Year", time(sim))]]) %in%
               colnames(sim$coeffTablAndValues$caribouRSF_NT$coeffTable)))
@@ -305,13 +338,17 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
             stop("Something went wrong when bringing rasters to memory to save. Please debug.")
 
           ###### End assertion
+          layersName <- file.path(outputPath(sim), paste0("caribouLayers_year",
+                                                          time(sim),
+                                                          "_", runName, ".tif"))
 
           writeRaster(sim$caribouLayers[[paste0("Year", time(sim))]],
-                      filename = file.path(outputPath(sim), paste0("caribouLayers_year",
-                                                                   time(sim))))
+                      filename = layersName,
+                      format = "GTiff",
+                      overwrite = TRUE)
+
           message(crayon::green(paste0("Caribou layers successfully saved as: ",
-                                       file.path(outputPath(sim), paste0("caribouLayers_year",
-                                                                         time(sim))))))
+                                       layersName)))
         }
 
       # schedule future event(s)
@@ -326,11 +363,16 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
         sim$predictedPresenceProbability[[paste0("Year", time(sim))]] <- RSFModel(coeffTablAndValues = sim$coeffTablAndValues,
                                                                                   modLayers = sim$caribouLayers[[paste0("Year", time(sim))]],
                                                                                   currentTime = time(sim),
+                                                                                  runName = sim[["runName"]],
                                                                                   pathData = dataPath(sim),
                                                                                   binningTable = sim$binningTable,
-                                                                                  pathOut = outputPath(sim),
-                                                                                  shp = caribouArea2,
-                                                                                  cropRSFToShp = P(sim)$cropRSFToShp)
+                                                                                  pathOut = checkPath(
+                                                                                    file.path(outputPath(sim),
+                                                                                              "predictions"),
+                                                                                    create = TRUE),
+                                                                                  makeMap = P(sim)$makeMap,
+                                                                                  shp = sim$NT1shapefile,
+                                                                                  cropRSFToShp = P(sim)$shpToCropTo)
       # schedule future event(s)
       sim <- scheduleEvent(sim, time(sim) + P(sim)$predictionInterval, "caribouRSF_NT", "calculatingRSF")
       if (P(sim)$predictLastYear){
@@ -339,9 +381,16 @@ doEvent.caribouRSF_NT = function(sim, eventTime, eventType) {
       }
     },
     plot = {
-      caribouResourceSelection <- sim$predictedPresenceProbability[[paste0("Year",
-                                                                           time(sim))]][["TaigaPlains"]][["relativeSelection"]]
-      Plot(caribouResourceSelection,
+      unlistRas <- unlist(sim$predictedPresenceProbability[[paste0("Year",
+                                                                   time(sim))]])
+      relativeSelName <- names(unlistRas)[-grep(x = names(unlistRas),
+                                                    pattern = "Uncertain")]
+      caribouResourceSelection <- unlistRas[[relativeSelName]]
+      # Bin the results
+      caribouResourceSelectionB <- binRSFtoDeMars2019(ras = caribouResourceSelection)
+      # Crop the stuff outside study area
+      caribouResourceSelectionB[is.na(sim$rstLCC)] <- NA
+     Plot(caribouResourceSelectionB, col = viridis::viridis(10),
            title = "Caribou resource selection")
 
       # schedule future event(s)
@@ -450,17 +499,17 @@ Trying to find it in inputPath", immediate. = TRUE)
   }
 
   if (!suppliedElsewhere("anthropogenicLayers", sim)){
-    sim$anthropogenicLayers <- Cache(prepInputs, targetFile = "anthropoDistLayers.grd",
+    sim$anthropogenicLayers <- prepInputs(targetFile = "anthropogenicDisturbanceLayers_NT1_BCR6.grd",
                                          archive = "anthropoDistLayers.zip",
-                                         alsoExtract = "similar",
+                                         alsoExtract = "anthropogenicDisturbanceLayers_NT1_BCR6.gri",
                                          url = extractURL("anthropogenicLayers"),
                                          destinationPath = dataPath(sim),
                                          studyArea = sim$studyArea,
-                                         filename2 = "anthropogenicLayers.grd",
+                                         filename2 = paste0(sim[["runName"]],
+                                                            "_disturbanceLays.grd"),
                                          rasterToMatch = sim$rasterToMatch,
-                                         fun = "raster::stack",
-                                         userTags = c("FUN:.inputObjs",
-                                                      "object:anthropogenicLayers"))
+                                         fun = "raster::stack")
+
     names(sim$anthropogenicLayers)[names(sim$anthropogenicLayers) == "lineDen1000"] <- "lden1000_2015"
     names(sim$anthropogenicLayers)[names(sim$anthropogenicLayers) == "exp_sett"] <- "exp_settle"
   }
@@ -469,13 +518,19 @@ Trying to find it in inputPath", immediate. = TRUE)
     stop("Please provide a runName to your simulation (i.e. 'NWT_NT1_BCR6')")
   }
 
-  if (!suppliedElsewhere("historicalFires", sim)){
-    fireYears <- 1991:2017
-    sim$historicalFires <- Cache(fireSenseUtils::getFirePolygons,
-                           years = fireYears,
-                           studyArea = aggregate(sim$studyArea),
-                           pathInputs = Paths$inputPath,
-                           userTags = paste0("years:", range(fireYears)))
+  if (!suppliedElsewhere("historicalFiresAll", sim)){
+    stop(paste0("historicalFiresAll was not supplied. You may try to generate it",
+                " automagically by installing the package usefulFuns and ",
+                "fireSenseUtils and running the function below. Please make ",
+                "sure you restart your system after installing the packages:
+            Require('tati-micheletti/usefulFuns@NWTworking')
+            Require(PredictiveEcology/fireSenseUtils@NWTworking)
+            fireYears <- 1991:2017
+            historicalFiresAll <- fireSenseUtils::getFirePolygons(years = fireYears,
+              studyArea = aggregate(studyArea),
+              pathInputs = Paths$inputPath,
+              userTags = paste0('years:', range(fireYears)))",
+                "Please NOTE that this dataset does not have 60 years timespan."))
   }
 
 
